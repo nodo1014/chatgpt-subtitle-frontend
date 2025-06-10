@@ -13,10 +13,10 @@ export const CLIP_CONFIG = {
 
   // 병렬 처리 설정
   BATCH_CONFIG: {
-    THUMBNAIL_BATCH_SIZE: 2, // 동시 썸네일 생성 개수
-    CLIP_BATCH_SIZE: 2,      // 동시 클립 생성 개수
-    CLIP_TIMEOUT: 60000,     // 클립 생성 타임아웃 (60초)
-    THUMBNAIL_TIMEOUT: 45000 // 썸네일 생성 타임아웃 (45초)
+    THUMBNAIL_BATCH_SIZE: 1, // 동시 썸네일 생성 개수 (안정성 우선)
+    CLIP_BATCH_SIZE: 1,      // 동시 클립 생성 개수 (안정성 우선)
+    CLIP_TIMEOUT: 180000,    // 클립 생성 타임아웃 (180초 = 3분)
+    THUMBNAIL_TIMEOUT: 15000 // 썸네일 생성 타임아웃 (15초)
   },
 
   // FFmpeg 설정

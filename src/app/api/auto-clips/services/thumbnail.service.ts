@@ -47,10 +47,10 @@ export class ThumbnailService {
         resolve(false);
       }, CLIP_CONFIG.BATCH_CONFIG.THUMBNAIL_TIMEOUT);
 
-      // FFmpeg 프로세스 시작
+      // FFmpeg 프로세스 시작 (최적화: -ss를 -i 앞으로 이동)
       const ffmpeg = spawn('ffmpeg', [
+        '-ss', seconds.toString(),  // 🔥 입력 전 시크로 성능 대폭 향상
         '-i', mediaFile,
-        '-ss', seconds.toString(),
         ...CLIP_CONFIG.FFMPEG.THUMBNAIL_OPTIONS,
         thumbnailPath
       ], {
