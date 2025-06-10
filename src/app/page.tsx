@@ -185,9 +185,9 @@ export default function Home() {
           <div className="bg-white p-8 border-b border-gray-200 flex-shrink-0">
             <div className="max-w-4xl mx-auto">
               <div className="text-center">
-                <h2 className="text-3xl font-bold mb-3 text-gray-800">🎯 배치 문장 검색</h2>
+                <h2 className="text-3xl font-bold mb-3 text-gray-800">🎯 쉐도윙 문장 검색</h2>
                 <p className="text-lg mb-8 opacity-80 leading-relaxed text-gray-600">
-                  여러 개의 영어 문장을 한 번에 입력하여 관련된 미디어 콘텐츠를 찾아보세요.
+                  쉐도윙 연습을 위한 정확한 영어 문장 매칭으로 미디어 콘텐츠를 찾아보세요.
                 </p>
                 
                 <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
@@ -199,13 +199,13 @@ export default function Home() {
                     value={batchText}
                     onChange={(e) => setBatchText(e.target.value)}
                     className="w-full min-h-[160px] p-4 border border-gray-200 rounded-lg bg-white text-gray-700 text-base leading-relaxed resize-vertical transition-all duration-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder={`i love you so much
-you make me happy
-how are you doing today
-can you help me with this
-what do you think about it
+                    placeholder={`i love you
+how are you
+thank you
+good morning
+see you later
 
-(영어 문장을 한 줄에 하나씩 입력하세요. 대소문자 구분 없이 검색 가능합니다.)`}
+(쉐도윙 연습할 영어 문장을 한 줄에 하나씩 입력하세요. 정확한 매칭으로 검색됩니다.)`}
                     rows={6}
                   />
                   

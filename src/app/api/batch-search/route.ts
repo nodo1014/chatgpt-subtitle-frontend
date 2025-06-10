@@ -138,27 +138,35 @@ function extractEnglishSentences(text: string): string[] {
 
 function searchInData(data: SubtitleData[], query: string, limit: number): SearchResult[] {
   try {
-    const queryWords = query.toLowerCase().split(' ').filter(word => word.length > 2);
+    const queryLower = query.toLowerCase().trim();
     const results: { item: SubtitleData; score: number }[] = [];
 
     // 각 자막 항목에 대해 검색
     data.forEach(item => {
-      const text = item.text.toLowerCase();
+      const textLower = item.text.toLowerCase().trim();
       let score = 0;
 
-      // 정확한 문장 매치 (높은 점수)
-      if (text.includes(query.toLowerCase())) {
-        score += 100;
+      // 1. 완전 일치 (최고 점수)
+      if (textLower === queryLower) {
+        score = 1000;
+      }
+      // 2. 정확한 부분 문자열 매치 (높은 점수)
+      else if (textLower.includes(queryLower)) {
+        score = 500;
+      }
+      // 3. 구두점 제거 후 매치
+      else {
+        const cleanText = textLower.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+        const cleanQuery = queryLower.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+        
+        if (cleanText === cleanQuery) {
+          score = 800;
+        } else if (cleanText.includes(cleanQuery)) {
+          score = 300;
+        }
       }
 
-      // 단어별 매치
-      queryWords.forEach(word => {
-        if (text.includes(word)) {
-          score += 10;
-        }
-      });
-
-      // 최소 점수 이상인 경우만 결과에 포함
+      // 점수가 있는 경우만 결과에 포함
       if (score > 0) {
         results.push({ item, score });
       }
@@ -175,7 +183,7 @@ function searchInData(data: SubtitleData[], query: string, limit: number): Searc
       end_time: result.item.end_time,
       language: result.item.language,
       directory: result.item.directory,
-      confidence: Math.max(0.5, Math.min(1.0, result.score / 100)) // 점수를 신뢰도로 변환
+      confidence: Math.max(0.7, Math.min(1.0, result.score / 1000)) // 점수를 신뢰도로 변환
     }));
 
   } catch (error) {

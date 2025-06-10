@@ -108,9 +108,17 @@ export default function ResultsPage() {
   };
 
   const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-600';
-    if (confidence >= 0.6) return 'text-yellow-600';
+    if (confidence >= 0.95) return 'text-green-600';
+    if (confidence >= 0.8) return 'text-blue-600';
+    if (confidence >= 0.7) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  const getMatchType = (confidence: number) => {
+    if (confidence >= 0.95) return '완전일치';
+    if (confidence >= 0.8) return '정확매치';
+    if (confidence >= 0.7) return '부분매치';
+    return '유사매치';
   };
 
   if (loading) {
@@ -216,6 +224,9 @@ export default function ResultsPage() {
                         <div className="flex items-center gap-3 text-gray-500">
                           <span className="font-mono">{formatTime(result.start_time)}</span>
                           <span className={`font-semibold ${getConfidenceColor(result.confidence)}`}>
+                            {getMatchType(result.confidence)}
+                          </span>
+                          <span className={`text-xs ${getConfidenceColor(result.confidence)}`}>
                             {(result.confidence * 100).toFixed(0)}%
                           </span>
                           <span>{getLanguageEmoji(result.language)}</span>
