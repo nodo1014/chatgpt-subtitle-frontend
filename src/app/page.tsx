@@ -1,0 +1,269 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from "next/image";
+
+interface HistoryItem {
+  title: string;
+  count: number;
+  timestamp: string;
+}
+
+export default function Home() {
+  const [batchText, setBatchText] = useState('');
+  const [resultsPerSentence, setResultsPerSentence] = useState(5);
+  const [isSearching, setIsSearching] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<HistoryItem[]>([]);
+  const router = useRouter();
+
+  useEffect(() => {
+    // 모바일에서는 사이드바 기본 숨김
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setSidebarCollapsed(true);
+    }
+
+    // 검색 히스토리 로드
+    loadSearchHistory();
+  }, []);
+
+  const loadSearchHistory = () => {
+    // 샘플 히스토리 데이터
+    const sampleHistory: HistoryItem[] = [
+      { title: '💕 사랑과 관계 표현', count: 15, timestamp: '2024-01-15' },
+      { title: '💼 비즈니스 미팅 영어', count: 12, timestamp: '2024-01-14' },
+      { title: '☕ 일상 대화 표현', count: 18, timestamp: '2024-01-13' },
+      { title: '😊 감정 표현하기', count: 20, timestamp: '2024-01-12' },
+      { title: '🍕 음식 관련 표현', count: 16, timestamp: '2024-01-11' },
+      { title: '✈️ 여행 영어 표현', count: 22, timestamp: '2024-01-10' },
+      { title: '🎓 학교생활 표현', count: 14, timestamp: '2024-01-09' },
+      { title: '💪 운동과 건강', count: 19, timestamp: '2024-01-08' },
+      { title: '🎬 영화 리뷰 표현', count: 17, timestamp: '2024-01-07' },
+      { title: '🛍️ 쇼핑 영어', count: 13, timestamp: '2024-01-06' },
+    ];
+    setSearchHistory(sampleHistory);
+  };
+
+  const extractEnglishSentences = (text: string): string[] => {
+    const koreanRegex = /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g;
+    
+    const lines = text.split('\n').filter(line => {
+      const cleanLine = line.trim();
+      return cleanLine.length > 0 && !koreanRegex.test(cleanLine);
+    });
+    
+    const sentences: string[] = [];
+    const sentenceRegex = /[A-Z][^.!?]*[.!?]/g;
+    
+    lines.forEach(line => {
+      const matches = line.match(sentenceRegex);
+      if (matches) {
+        matches.forEach(sentence => {
+          const trimmed = sentence.trim();
+          if (trimmed.length >= 10 && trimmed.split(' ').length >= 3) {
+            sentences.push(trimmed);
+          }
+        });
+      }
+    });
+    
+    return sentences;
+  };
+
+  const performBatchSearch = async () => {
+    if (!batchText.trim()) {
+      alert('다중 문장을 입력해주세요.');
+      return;
+    }
+
+    setIsSearching(true);
+
+    try {
+      const response = await fetch('/api/batch-search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: batchText,
+          results_per_sentence: resultsPerSentence
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // 검색 결과 페이지로 이동
+        const searchDataParam = encodeURIComponent(JSON.stringify(data));
+        router.push(`/results?data=${searchDataParam}`);
+      } else {
+        alert(data.error || '검색 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('API 호출 오류:', error);
+      alert('검색 중 오류가 발생했습니다.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const clearInput = () => {
+    setBatchText('');
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#0f0f23] transition-all duration-300">
+      {/* ChatGPT Style Sidebar */}
+      <div className={`${sidebarCollapsed ? 'w-0 overflow-hidden' : 'w-64'} bg-[#171717] text-[#ececf1] flex flex-col border-r border-[#2d2d2d] transition-all duration-300 z-50`}>
+        <div className="p-4 border-b border-[#2d2d2d] flex justify-between items-center">
+          <button className="flex-1 bg-transparent border border-[#2d2d2d] text-[#ececf1] p-3 rounded-lg cursor-pointer transition-all duration-200 flex items-center gap-2 text-sm mr-2 hover:bg-[#2d2d2d]">
+            <span>➕</span>
+            <span>새 테마 검색</span>
+          </button>
+        </div>
+        
+        <div className="flex-1 p-4 overflow-y-auto max-h-[calc(100vh-80px)]">
+          <div className="mb-6">
+            <h3 className="text-xs text-[#8e8ea0] uppercase tracking-wide mb-3 font-semibold">최근 검색</h3>
+            {searchHistory.map((item, index) => (
+              <div key={index} className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d]">
+                {item.title} ({item.count}개 문장)
+              </div>
+            ))}
+          </div>
+          
+          <div className="mb-6">
+            <h3 className="text-xs text-[#8e8ea0] uppercase tracking-wide mb-3 font-semibold">즐겨찾기</h3>
+            <div className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d]">
+              ⭐ TOEIC 필수 표현
+            </div>
+            <div className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d]">
+              ⭐ 면접 영어 표현
+            </div>
+            <div className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d]">
+              ⭐ 친구와의 대화
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Area */}
+      <div className="flex-1 flex flex-col bg-white overflow-hidden transition-all duration-300">
+        <div className="bg-white border-b border-gray-200 p-3 flex items-center justify-between min-h-[60px]">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={toggleSidebar}
+              className="bg-transparent border border-gray-200 text-gray-700 p-2 rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center w-9 h-9 hover:bg-gray-50"
+            >
+              <span>☰</span>
+            </button>
+            <div className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+              🎯 Theme Search
+              <span className="text-sm text-gray-500">테마별 다중 문장 검색</span>
+            </div>
+          </div>
+          <div className="hidden md:flex gap-5 text-sm text-gray-500">
+            <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
+              <span>📊</span>
+              <span>270K+ 문장</span>
+            </div>
+            <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
+              <span>🎬</span>
+              <span>7개 미디어</span>
+            </div>
+            <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
+              <span>⚡</span>
+              <span>AI 추천</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col overflow-y-auto">
+          {/* Search Input Section */}
+          <div className="bg-white p-8 border-b border-gray-200 flex-shrink-0">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center">
+                <h2 className="text-3xl font-bold mb-3 text-gray-800">🎯 배치 문장 검색</h2>
+                <p className="text-lg mb-8 opacity-80 leading-relaxed text-gray-600">
+                  여러 개의 영어 문장을 한 번에 입력하여 관련된 미디어 콘텐츠를 찾아보세요.
+                </p>
+                
+                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                  <label htmlFor="batchTextInput" className="block text-base font-semibold mb-2.5 text-gray-700">
+                    📝 영어 문장들 입력 (한 줄에 하나씩)
+                  </label>
+                  <textarea 
+                    id="batchTextInput"
+                    value={batchText}
+                    onChange={(e) => setBatchText(e.target.value)}
+                    className="w-full min-h-[160px] p-4 border border-gray-200 rounded-lg bg-white text-gray-700 text-base leading-relaxed resize-vertical transition-all duration-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    placeholder={`I love you so much.
+You make me happy.
+How are you doing today?
+Can you help me with this?
+What do you think about it?
+
+(영어 문장을 여러 줄로 입력하세요. 대문자로 시작하고 마침표로 끝나는 문장을 자동으로 추출합니다.)`}
+                    rows={6}
+                  />
+                  
+                  <div className="flex flex-col md:flex-row justify-between items-center mt-5 gap-4">
+                    <div className="flex items-center gap-2.5">
+                      <label htmlFor="resultsPerSentence" className="text-sm text-gray-700 font-medium">문장당 결과 수:</label>
+                      <select 
+                        id="resultsPerSentence" 
+                        value={resultsPerSentence}
+                        onChange={(e) => setResultsPerSentence(Number(e.target.value))}
+                        className="bg-white border border-gray-200 rounded-md px-3 py-2 text-gray-700 text-sm cursor-pointer transition-all duration-300 focus:outline-none focus:border-blue-500"
+                      >
+                        <option value={3}>3개</option>
+                        <option value={5}>5개</option>
+                        <option value={10}>10개</option>
+                        <option value={20}>20개</option>
+                      </select>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={clearInput}
+                        className="bg-transparent text-gray-500 border border-gray-200 rounded-lg px-6 py-3 text-sm font-semibold cursor-pointer transition-all duration-300 flex items-center gap-2 hover:bg-gray-50 hover:text-gray-700"
+                      >
+                        🗑️ 초기화
+                      </button>
+                      <button 
+                        onClick={performBatchSearch}
+                        disabled={isSearching}
+                        className="bg-blue-600 text-white border border-blue-600 rounded-lg px-6 py-3 text-sm font-semibold cursor-pointer transition-all duration-300 flex items-center gap-2 hover:bg-blue-700 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isSearching ? '🔄 검색 중...' : '🔍 배치 검색 시작'}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {isSearching && (
+                    <div className="w-full h-1 bg-gray-200 rounded-sm overflow-hidden mt-5">
+                      <div className="h-full bg-gradient-to-r from-blue-600 to-blue-800 rounded-sm animate-pulse"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {!sidebarCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
+    </div>
+  );
+}
