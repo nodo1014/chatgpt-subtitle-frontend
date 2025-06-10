@@ -95,10 +95,10 @@ export class ClipService {
         resolve(false);
       }, CLIP_CONFIG.BATCH_CONFIG.CLIP_TIMEOUT);
 
-      // FFmpeg 프로세스 시작
+      // FFmpeg 프로세스 시작 (최적화: -ss를 -i 앞으로 이동)
       const ffmpeg = spawn('ffmpeg', [
+        '-ss', startSeconds.toString(),  // 🔥 입력 전 시크로 성능 대폭 향상
         '-i', mediaFile,
-        '-ss', startSeconds.toString(),
         '-t', duration.toString(),
         ...CLIP_CONFIG.FFMPEG.CLIP_OPTIONS,
         outputPath
