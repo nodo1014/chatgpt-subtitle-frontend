@@ -30,9 +30,10 @@ export const CLIP_CONFIG = {
     ],
 
     // 썸네일 생성 기본 옵션 (밝기/대비 개선)
+    // 유튜브 썸네일 활용을 위해, 1280:720
     THUMBNAIL_OPTIONS: [
       '-vframes', '1',
-      '-vf', 'scale=320:180:force_original_aspect_ratio=decrease,pad=320:180:(ow-iw)/2:(oh-ih)/2,eq=brightness=0.15:contrast=1.3:saturation=1.2',
+      '-vf', 'scale=320:180:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,eq=brightness=0.15:contrast=1.3:saturation=1.2',
       '-q:v', '2',  // 품질 향상 (3→2)
       '-y'
     ]
