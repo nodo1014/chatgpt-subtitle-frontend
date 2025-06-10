@@ -1,0 +1,28 @@
+{
+  "mediaConfig": {
+    "MEDIA_BASE_PATH": "/mnt/qnap/media_eng",
+    "CLIPS_OUTPUT_PATH": "public/clips",
+    "THUMBNAILS_OUTPUT_PATH": "public/thumbnails",
+    "FFMPEG_SETTINGS": {
+      "VIDEO_CODEC": "libx264",
+      "AUDIO_CODEC": "aac",
+      "THUMBNAIL_FORMAT": "jpg",
+      "THUMBNAIL_SIZE": "320x180",
+      "THUMBNAIL_QUALITY": 2,
+      "THUMBNAIL_BRIGHTNESS": 0.1,
+      "THUMBNAIL_CONTRAST": 1.2,
+      "THUMBNAIL_SATURATION": 1.1
+    },
+    "CLIP_SETTINGS": {
+      "MAX_CLIPS_PER_BATCH": 20,
+      "PADDING_SECONDS": 0.5,
+      "MAX_DURATION": 30
+    }
+  },
+  "searchConfig": {
+    "DEFAULT_RESULTS_PER_SENTENCE": 5,
+    "CONFIDENCE_THRESHOLD": 0.7,
+    "MAX_SEARCH_RESULTS": 1000,
+    "SEARCH_TIMEOUT": 30
+  }
+}

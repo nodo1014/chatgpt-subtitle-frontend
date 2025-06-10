@@ -1,0 +1,371 @@
+{
+  "testType": "normal",
+  "timestamp": "2025-06-10T15:38:50.679Z",
+  "totalQueries": 8,
+  "successfulQueries": 7,
+  "failedQueries": 1,
+  "totalResults": 12,
+  "totalClipsCreated": 4,
+  "averageSearchTime": 15089.125,
+  "results": [
+    {
+      "query": "good morning",
+      "searchTime": 20,
+      "searchData": {
+        "success": true,
+        "extracted_sentences": [
+          "good morning"
+        ],
+        "search_summary": {
+          "total_sentences": 1,
+          "total_results": 0,
+          "average_per_sentence": "0.0",
+          "search_time": 1.2
+        },
+        "sentence_results": [
+          {
+            "sentence_index": 1,
+            "search_sentence": "good morning",
+            "found_count": 0,
+            "results": []
+          }
+        ],
+        "auto_create_clips": true
+      },
+      "clipResult": null,
+      "totalTime": 20
+    },
+    {
+      "query": "see you later",
+      "searchTime": 23,
+      "searchData": {
+        "success": true,
+        "extracted_sentences": [
+          "see you later"
+        ],
+        "search_summary": {
+          "total_sentences": 1,
+          "total_results": 0,
+          "average_per_sentence": "0.0",
+          "search_time": 1.2
+        },
+        "sentence_results": [
+          {
+            "sentence_index": 1,
+            "search_sentence": "see you later",
+            "found_count": 0,
+            "results": []
+          }
+        ],
+        "auto_create_clips": true
+      },
+      "clipResult": null,
+      "totalTime": 23
+    },
+    {
+      "query": "nice to meet you",
+      "searchTime": 21,
+      "searchData": {
+        "success": true,
+        "extracted_sentences": [
+          "nice to meet you"
+        ],
+        "search_summary": {
+          "total_sentences": 1,
+          "total_results": 0,
+          "average_per_sentence": "0.0",
+          "search_time": 1.2
+        },
+        "sentence_results": [
+          {
+            "sentence_index": 1,
+            "search_sentence": "nice to meet you",
+            "found_count": 0,
+            "results": []
+          }
+        ],
+        "auto_create_clips": true
+      },
+      "clipResult": null,
+      "totalTime": 21
+    },
+    {
+      "query": "excuse me",
+      "searchTime": 20,
+      "searchData": {
+        "success": true,
+        "extracted_sentences": [
+          "excuse me"
+        ],
+        "search_summary": {
+          "total_sentences": 1,
+          "total_results": 2,
+          "average_per_sentence": "2.0",
+          "search_time": 1.2
+        },
+        "sentence_results": [
+          {
+            "sentence_index": 1,
+            "search_sentence": "excuse me",
+            "found_count": 2,
+            "results": [
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/Batman The Animated Series (1992) Season 1-4 S01-S04 + Extras (1080p BluRay x265 HEVC 10bit AAC 2.0 RCVR)/Season 1/Batman The Animated Series (1992) - S01E01 - The Cat & the Claw (Part 1) (1080p BluRay x265 RCVR).mkv",
+                "subtitle_text": "Excuse me, ladies.",
+                "start_time": "00:06:28,290",
+                "end_time": "00:06:29,790",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani/Batman The Animated Series (1992) Season 1-4 S01-S04 + Extras (1080p BluRay x265 HEVC 10bit AAC 2.0 RCVR)/Season 1",
+                "confidence": 1
+              },
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/Batman The Animated Series (1992) Season 1-4 S01-S04 + Extras (1080p BluRay x265 HEVC 10bit AAC 2.0 RCVR)/Season 1/Batman The Animated Series (1992) - S01E01 - The Cat & the Claw (Part 1) (1080p BluRay x265 RCVR).mkv",
+                "subtitle_text": "Now, if you'll excuse me, I've given you all the time I could spare.",
+                "start_time": "00:12:55,540",
+                "end_time": "00:12:58,820",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani/Batman The Animated Series (1992) Season 1-4 S01-S04 + Extras (1080p BluRay x265 HEVC 10bit AAC 2.0 RCVR)/Season 1",
+                "confidence": 0.95
+              }
+            ]
+          }
+        ],
+        "auto_create_clips": true
+      },
+      "clipResult": {
+        "success": true,
+        "message": "3단계 배치 처리 완료",
+        "total_created": 2,
+        "total_processed": 2,
+        "stats": {
+          "total_requested": 2,
+          "duplicates_removed": 0,
+          "json_created": 2,
+          "thumbnails_created": 0,
+          "clips_created": 2,
+          "total_time_seconds": 45.878,
+          "stage_times": {
+            "json": 0.01,
+            "thumbnails": 30.014,
+            "clips": 15.854
+          }
+        }
+      },
+      "totalTime": 46312
+    },
+    {
+      "query": "you're welcome",
+      "searchTime": 159,
+      "searchData": {
+        "success": true,
+        "extracted_sentences": [
+          "you're welcome"
+        ],
+        "search_summary": {
+          "total_sentences": 1,
+          "total_results": 5,
+          "average_per_sentence": "5.0",
+          "search_time": 1.2
+        },
+        "sentence_results": [
+          {
+            "sentence_index": 1,
+            "search_sentence": "you're welcome",
+            "found_count": 5,
+            "results": [
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/Missing.Link.2019.1080p.BluRay.x264-[YTS.LT].mp4",
+                "subtitle_text": "You're welcome to them.",
+                "start_time": "01:17:46,895",
+                "end_time": "01:17:48,529",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani",
+                "confidence": 0.9
+              },
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/SPAWN (1997-1999) - Complete Movie and Animated TV Series - 480p-1080p x264/Movie (1997)/SPAWN - Director's Cut (1997 - 1080p BluRay).mp4",
+                "subtitle_text": "You're welcome to join us...",
+                "start_time": "00:18:11,257",
+                "end_time": "00:18:13,216",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani",
+                "confidence": 0.85
+              },
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/SPAWN (1997-1999) - Complete Movie and Animated TV Series - 480p-1080p x264/Season 1 (1997)/SPAWN - S01 E02 - Evil Intent (480p - DVDRip).mp4",
+                "subtitle_text": "YOU'RE WELCOME TO IT.",
+                "start_time": "00:06:29,490",
+                "end_time": "00:06:31,300",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani",
+                "confidence": 0.8
+              },
+              {
+                "media_file": "/mnt/qnap/media_eng/Disney/Beauty.and.the.Beast.1991.1080p.BluRay.x264.YIFY.mp4",
+                "subtitle_text": "You're welcome.",
+                "start_time": "00:50:13,052",
+                "end_time": "00:50:14,552",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Disney",
+                "confidence": 0.75
+              },
+              {
+                "media_file": "/mnt/qnap/media_eng/Drama/24시/24시 시즌1 1-24편(완) [720p]/05.avi",
+                "subtitle_text": "-Excuse me. -Thank you. You're welcome.",
+                "start_time": "00:02:03,908",
+                "end_time": "00:02:06,274",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Drama",
+                "confidence": 0.7
+              }
+            ]
+          }
+        ],
+        "auto_create_clips": true
+      },
+      "clipResult": {
+        "success": true,
+        "message": "3단계 배치 처리 완료",
+        "total_created": 2,
+        "total_processed": 4,
+        "stats": {
+          "total_requested": 5,
+          "duplicates_removed": 0,
+          "json_created": 4,
+          "thumbnails_created": 2,
+          "clips_created": 2,
+          "total_time_seconds": 87.575,
+          "stage_times": {
+            "json": 0.048,
+            "thumbnails": 34.847,
+            "clips": 52.679
+          }
+        }
+      },
+      "totalTime": 87758
+    },
+    {
+      "query": "i don't know",
+      "searchTime": 227,
+      "searchData": {
+        "success": true,
+        "extracted_sentences": [
+          "i don't know"
+        ],
+        "search_summary": {
+          "total_sentences": 1,
+          "total_results": 5,
+          "average_per_sentence": "5.0",
+          "search_time": 1.2
+        },
+        "sentence_results": [
+          {
+            "sentence_index": 1,
+            "search_sentence": "i don't know",
+            "found_count": 5,
+            "results": [
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/Missing.Link.2019.1080p.BluRay.x264-[YTS.LT].mp4",
+                "subtitle_text": "or a field mouse or something like that. I don't know.",
+                "start_time": "00:17:50,069",
+                "end_time": "00:17:52,805",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani",
+                "confidence": 0.9
+              },
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/Missing.Link.2019.1080p.BluRay.x264-[YTS.LT].mp4",
+                "subtitle_text": "And I don't know that song that well.",
+                "start_time": "00:37:55,173",
+                "end_time": "00:37:56,807",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani",
+                "confidence": 0.85
+              },
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/Missing.Link.2019.1080p.BluRay.x264-[YTS.LT].mp4",
+                "subtitle_text": "I don't know. Do I?",
+                "start_time": "01:07:49,198",
+                "end_time": "01:07:52,167",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani",
+                "confidence": 0.8
+              },
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/Missing.Link.2019.1080p.BluRay.x264-[YTS.LT].mp4",
+                "subtitle_text": "Uh, I don't know. I think you might be a little too heavy.",
+                "start_time": "01:14:11,546",
+                "end_time": "01:14:14,783",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani",
+                "confidence": 0.75
+              },
+              {
+                "media_file": "/mnt/qnap/media_eng/Ani/Missing.Link.2019.1080p.BluRay.x264-[YTS.LT].mp4",
+                "subtitle_text": "I don't know. Three more of them, and we could build a ramp.",
+                "start_time": "01:14:47,149",
+                "end_time": "01:14:49,689",
+                "language": "en",
+                "directory": "/mnt/qnap/media_eng/Ani",
+                "confidence": 0.7
+              }
+            ]
+          }
+        ],
+        "auto_create_clips": true
+      },
+      "clipResult": {
+        "success": true,
+        "message": "3단계 배치 처리 완료",
+        "total_created": 0,
+        "total_processed": 0,
+        "stats": {
+          "total_requested": 5,
+          "duplicates_removed": 0,
+          "json_created": 0,
+          "thumbnails_created": 0,
+          "clips_created": 0,
+          "total_time_seconds": 0.001,
+          "stage_times": {
+            "json": 0.001,
+            "thumbnails": 0,
+            "clips": 0
+          }
+        }
+      },
+      "totalTime": 265
+    },
+    {
+      "query": "what's your name",
+      "error": "network timeout at: http://localhost:3000/api/auto-clips",
+      "searchTime": 120221
+    },
+    {
+      "query": "where are you from",
+      "searchTime": 22,
+      "searchData": {
+        "success": true,
+        "extracted_sentences": [
+          "where are you from"
+        ],
+        "search_summary": {
+          "total_sentences": 1,
+          "total_results": 0,
+          "average_per_sentence": "0.0",
+          "search_time": 1.2
+        },
+        "sentence_results": [
+          {
+            "sentence_index": 1,
+            "search_sentence": "where are you from",
+            "found_count": 0,
+            "results": []
+          }
+        ],
+        "auto_create_clips": true
+      },
+      "clipResult": null,
+      "totalTime": 22
+    }
+  ]
+}

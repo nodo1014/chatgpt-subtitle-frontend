@@ -6,12 +6,24 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:quick": "node quick-test.js",
+    "test:search": "node test-automation.js --quick",
+    "test:full": "node test-automation.js --clips",
+    "test:batch": "node test-automation.js --batch",
+    "test:performance": "node performance-test.js",
+    "test:performance:clips": "node performance-test.js --clips",
+    "test:analysis": "node performance-test.js --analysis"
   },
   "dependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/uuid": "^10.0.0",
+    "better-sqlite3": "^11.10.0",
     "next": "15.3.3",
+    "node-fetch": "^2.7.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

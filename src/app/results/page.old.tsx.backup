@@ -1,0 +1,1037 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
+
+interface SearchResult {
+  media_file: string;
+  subtitle_text: string;
+  start_time: string;
+  end_time: string;
+  language: string;
+  directory: string;
+  confidence: number;
+}
+
+interface SentenceResult {
+  sentence_index: number;
+  search_sentence: string;
+  found_count: number;
+  results: SearchResult[];
+}
+
+interface SearchData {
+  success: boolean;
+  extracted_sentences: string[];
+  search_summary: {
+    total_sentences: number;
+    total_results: number;
+    average_per_sentence: string;
+    search_time: number;
+  };
+  sentence_results: SentenceResult[];
+  auto_create_clips: boolean;
+}
+
+interface ClipMetadata {
+  id: string;
+  title: string;
+  sentence: string;
+  englishSubtitle: string;
+  koreanSubtitle: string;
+  startTime: string;
+  endTime: string;
+  sourceFile: string;
+  clipPath: string;
+  thumbnailPath?: string;
+  createdAt: string;
+  duration: string;
+  tags: string[];
+}
+
+interface HistoryItem {
+  title: string;
+  count: number;
+  timestamp: string;
+}
+
+'use client';
+
+import { useResultsData, useClipOperations } from './hooks';
+import { showToastMessage } from './utils';
+
+// Components
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
+import TabNavigation from './components/TabNavigation';
+import AutoClipProgress from './components/AutoClipProgress';
+import SearchResults from './components/SearchResults';
+import ClipsView from './components/ClipsView';
+import Toast from './components/Toast';
+
+export default function ResultsPage() {
+  const {
+    // State
+    searchData,
+    loading,
+    clippingStatus,
+    setClippingStatus,
+    clips,
+    setClips,
+    viewMode,
+    setViewMode,
+    sidebarCollapsed,
+    setSidebarCollapsed,
+    searchHistory,
+    autoClipProgress,
+    setAutoClipProgress,
+    showToast,
+    setShowToast,
+    toastMessage,
+    setToastMessage,
+    // Functions
+    loadClips,
+    router
+  } = useResultsData();
+
+  const {
+    createAutoClipsInBackground,
+    createClip,
+    deleteClip
+  } = useClipOperations(
+    setClippingStatus,
+    setClips,
+    setViewMode,
+    setAutoClipProgress,
+    setToastMessage,
+    setShowToast,
+    loadClips
+  );
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 useEffect 실행됨');
+    }
+    
+    // 모바일에서는 사이드바 기본 숨김
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setSidebarCollapsed(true);
+    }
+
+    // 검색 히스토리 로드
+    loadSearchHistory();
+    
+    // URL에서 view 파라미터 확인
+    const viewParam = searchParams.get('view');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 viewParam:', viewParam);
+    }
+    
+    if (viewParam === 'clips') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎬 클립 모드로 전환');
+      }
+      setViewMode('clips');
+      loadClips();
+      setLoading(false);
+      return;
+    }
+
+    const dataParam = searchParams.get('data');
+    if (dataParam) {
+      try {
+        const decodedData = JSON.parse(decodeURIComponent(dataParam));
+        setSearchData(decodedData);
+        loadClips();
+        
+        // 자동 클립 생성이 활성화된 경우
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 자동 클립 생성 플래그 확인:', decodedData.auto_create_clips);
+        }
+        if (decodedData.auto_create_clips) {
+          console.log('✅ 자동 클립 생성 시작 예정 (즉시 백그라운드 실행)');
+          console.log('📊 검색 결과 데이터:', decodedData.sentence_results);
+          
+          // 사용자에게 클립 생성 시작을 알림
+          const totalExpected = decodedData.sentence_results.reduce((acc: number, sr: SentenceResult) => acc + Math.min(sr.results.length, 5), 0);
+          console.log(`📈 예상 클립 개수: ${totalExpected}`);
+          
+          setAutoClipProgress({ 
+            isCreating: true, 
+            progress: 0, 
+            total: totalExpected,
+            current: `🚀 자동 클립 생성이 시작됩니다! (총 ${totalExpected}개 예상)` 
+          });
+          
+          // 즉시 토스트 알림 표시
+          showToastMessage(`🎬 ${totalExpected}개의 클립 생성을 시작합니다!`);
+          
+          // 즉시 백그라운드에서 클립 생성 시작 (UI 블로킹 없음)
+          console.log('🎯 createAutoClipsInBackground 함수 호출 시작');
+          createAutoClipsInBackground(decodedData);
+        } else {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('❌ 자동 클립 생성이 비활성화됨');
+          }
+        }
+      } catch (error) {
+        console.error('데이터 파싱 오류:', error);
+        router.push('/');
+      }
+    } else {
+      router.push('/');
+    }
+    setLoading(false);
+  }, [searchParams, router]);
+
+  // 클립 목록 자동 새로고침 (3단계 상태 변화 실시간 확인)
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    
+    if (viewMode === 'clips' || autoClipProgress.isCreating) {
+      // 2초마다 클립 목록 새로고침
+      intervalId = setInterval(() => {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 클립 목록 자동 새로고침');
+        }
+        loadClips();
+      }, 2000);
+    }
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [viewMode, autoClipProgress.isCreating]);
+
+  const loadSearchHistory = () => {
+    // 샘플 히스토리 데이터
+    const sampleHistory: HistoryItem[] = [
+      { title: '💕 사랑과 관계 표현', count: 15, timestamp: '2024-01-15' },
+      { title: '💼 비즈니스 미팅 영어', count: 12, timestamp: '2024-01-14' },
+      { title: '☕ 일상 대화 표현', count: 18, timestamp: '2024-01-13' },
+      { title: '😊 감정 표현하기', count: 20, timestamp: '2024-01-12' },
+      { title: '🍕 음식 관련 표현', count: 16, timestamp: '2024-01-11' },
+      { title: '✈️ 여행 영어 표현', count: 22, timestamp: '2024-01-10' },
+      { title: '🎓 학교생활 표현', count: 14, timestamp: '2024-01-09' },
+      { title: '💪 운동과 건강', count: 19, timestamp: '2024-01-08' },
+      { title: '🎬 영화 리뷰 표현', count: 17, timestamp: '2024-01-07' },
+      { title: '🛍️ 쇼핑 영어', count: 13, timestamp: '2024-01-06' },
+    ];
+    setSearchHistory(sampleHistory);
+  };
+
+  const loadClips = async () => {
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎬 클립 목록 로드 시작');
+      }
+      const response = await fetch('/api/clips');
+      const data = await response.json();
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎬 클립 목록 응답:', data);
+      }
+      
+      if (data.success) {
+        setClips(data.clips);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🎬 클립 목록 설정 완료, 개수:', data.clips.length);
+        }
+      } else {
+        console.error('클립 목록 로드 실패:', data.error);
+      }
+    } catch (error) {
+      console.error('클립 목록 로드 오류:', error);
+    }
+  };
+
+  // 백그라운드에서 실행되는 비동기 클립 생성
+  const createAutoClipsInBackground = async (data: SearchData) => {
+    console.log('🚀 백그라운드 클립 생성 시작');
+    console.log('📥 받은 데이터:', data);
+    
+    const totalExpected = data.sentence_results.reduce((acc, sr) => acc + Math.min(sr.results.length, 5), 0);
+    
+    // 즉시 진행 상황 UI 표시
+    setAutoClipProgress({ 
+      isCreating: true, 
+      progress: 0, 
+      total: totalExpected,
+      current: `🎬 클립 생성 준비 중... (총 ${totalExpected}개 예상)` 
+    });
+    
+    // 실시간 클립 목록 업데이트를 위한 인터벌 설정
+    const clipRefreshInterval = setInterval(async () => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 클립 목록 실시간 새로고침');
+      }
+      await loadClips();
+    }, 2000); // 2초마다 클립 목록 새로고침
+    
+    // 백그라운드에서 클립 생성 (UI 블로킹 없음)
+    setTimeout(async () => {
+      try {
+        console.log('⏰ setTimeout 실행됨 - API 호출 시작');
+        
+        // 진행 상황 시뮬레이션 (실제 API 호출 전)
+        let simulatedProgress = 0;
+        const progressInterval = setInterval(() => {
+          if (simulatedProgress < totalExpected * 0.8) { // 80%까지만 시뮬레이션
+            simulatedProgress += Math.random() * 2;
+            setAutoClipProgress(prev => ({ 
+              ...prev,
+              progress: Math.min(simulatedProgress, totalExpected * 0.8),
+              current: `🎬 클립 생성 중... (${Math.round(simulatedProgress)}/${totalExpected})` 
+            }));
+          }
+        }, 500);
+
+        console.log('🌐 API 호출 시작: /api/auto-clips');
+        console.log('📤 전송 데이터:', { sentence_results: data.sentence_results });
+        
+        const response = await fetch('/api/auto-clips', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ sentence_results: data.sentence_results })
+        });
+        
+        console.log('📡 API 응답 상태:', response.status, response.statusText);
+
+        clearInterval(progressInterval); // 시뮬레이션 중지
+        clearInterval(clipRefreshInterval); // 실시간 새로고침 중지
+
+        const result = await response.json();
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🎬 백그라운드 클립 생성 결과:', result);
+        }
+        
+        if (result.success) {
+          setAutoClipProgress({ 
+            isCreating: false, 
+            progress: result.total_created, 
+            total: result.total_processed, 
+            current: `✅ ${result.total_created}개 클립 생성 완료! (${result.total_processed}개 처리됨)` 
+          });
+          
+          // 토스트 알림 표시
+          showToastMessage(`🎉 ${result.total_created}개의 클립이 성공적으로 생성되었습니다!`);
+          
+          // 클립 목록 최종 로드
+          await loadClips();
+          
+          // 3초 후 클립 탭으로 자동 전환
+          setTimeout(() => {
+            setViewMode('clips');
+            showToastMessage('📺 클립 보기 탭으로 이동했습니다!');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🎯 클립 탭으로 자동 전환');
+            }
+          }, 3000);
+          
+          // 8초 후 진행 상황 메시지 숨기기
+          setTimeout(() => {
+            setAutoClipProgress({ isCreating: false, progress: 0, total: 0, current: '' });
+          }, 8000);
+        } else {
+          console.error('백그라운드 클립 생성 실패:', result.error);
+          clearInterval(clipRefreshInterval); // 실시간 새로고침 중지
+          setAutoClipProgress({ 
+            isCreating: false, 
+            progress: 0, 
+            total: 0, 
+            current: '❌ 클립 생성 실패' 
+          });
+        }
+      } catch (error) {
+        console.error('백그라운드 클립 생성 오류:', error);
+        clearInterval(clipRefreshInterval); // 실시간 새로고침 중지
+        setAutoClipProgress({ 
+          isCreating: false, 
+          progress: 0, 
+          total: 0, 
+          current: '❌ 클립 생성 중 오류 발생' 
+        });
+      }
+    }, 100); // 100ms 후 시작 (UI 렌더링 완료 후)
+  };
+
+  const createAutoClips = async (data: SearchData) => {
+    setAutoClipProgress({ isCreating: true, progress: 0, total: 0, current: '클립 생성 준비 중...' });
+    
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎬 자동 클립 생성 시작, 데이터:', data);
+      }
+      
+      const response = await fetch('/api/auto-clips', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sentence_results: data.sentence_results }) // 올바른 구조로 전달
+      });
+
+      const result = await response.json();
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎬 클립 생성 결과:', result);
+      }
+      
+      if (result.success) {
+        setAutoClipProgress({ 
+          isCreating: false, 
+          progress: result.total_created, 
+          total: result.total_processed, 
+          current: `${result.total_created}개 클립 생성 완료!` 
+        });
+        
+        // 클립이 생성되면 목록을 다시 로드하고 클립 탭으로 전환
+        await loadClips();
+        setTimeout(() => {
+          setViewMode('clips');
+          // 5초 후 진행 상황 메시지 숨기기
+          setTimeout(() => {
+            setAutoClipProgress({ isCreating: false, progress: 0, total: 0, current: '' });
+          }, 5000);
+        }, 2000);
+      } else {
+        console.error('클립 생성 실패:', result.error);
+        setAutoClipProgress({ isCreating: false, progress: 0, total: 0, current: '클립 생성 실패' });
+      }
+    } catch (error) {
+      console.error('자동 클립 생성 오류:', error);
+      setAutoClipProgress({ isCreating: false, progress: 0, total: 0, current: '클립 생성 중 오류 발생' });
+    }
+  };
+
+  const createClip = async (sentence: string, result: SearchResult, sentenceIndex: number, resultIndex: number) => {
+    const clipKey = `${sentenceIndex}-${resultIndex}`;
+    
+    if (clippingStatus[clipKey]) return;
+    
+    setClippingStatus(prev => ({ ...prev, [clipKey]: true }));
+    
+    try {
+      const response = await fetch('/api/clips', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sentence,
+          subtitle_text: result.subtitle_text,
+          media_file: result.media_file,
+          start_time: result.start_time,
+          end_time: result.end_time,
+          korean_subtitle: `한글 번역: ${sentence}`
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setClips(prev => [data.clip, ...prev]);
+        setViewMode('clips');
+      } else {
+        console.error('클립 생성 실패:', data.error);
+      }
+    } catch (error) {
+      console.error('클립 생성 오류:', error);
+    } finally {
+      setClippingStatus(prev => ({ ...prev, [clipKey]: false }));
+    }
+  };
+
+  const deleteClip = async (clipId: string) => {
+    if (!confirm('정말로 이 클립을 삭제하시겠습니까?')) return;
+    
+    try {
+      const response = await fetch(`/api/clips/${clipId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setClips(prev => prev.filter(clip => clip.id !== clipId));
+      } else {
+        console.error('클립 삭제 실패');
+      }
+    } catch (error) {
+      console.error('클립 삭제 오류:', error);
+    }
+  };
+
+  const formatTime = (timeStr: string) => {
+    // "00:01:23,456" 형식을 "1:23" 형식으로 변환
+    try {
+      const parts = timeStr.split(':');
+      const minutes = parseInt(parts[1]);
+      const seconds = parseInt(parts[2].split(',')[0]);
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    } catch {
+      return timeStr;
+    }
+  };
+
+  const getLanguageEmoji = (language: string) => {
+    return language === 'ko' ? '🇰🇷' : '🇺🇸';
+  };
+
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence >= 0.95) return 'text-green-600';
+    if (confidence >= 0.8) return 'text-blue-600';
+    if (confidence >= 0.7) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  const getMatchType = (confidence: number) => {
+    if (confidence >= 0.95) return '완전일치';
+    if (confidence >= 0.8) return '정확매치';
+    if (confidence >= 0.7) return '부분매치';
+    return '유사매치';
+  };
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 4000);
+  };
+
+  // 클립 카드 컴포넌트
+  const ClipCard = ({ clip }: { clip: ClipMetadata }) => {
+    const [thumbnailError, setThumbnailError] = useState(false);
+    
+    // 3단계 상태 확인
+    const getStageInfo = () => {
+      if (clip.tags.includes('stage-3-complete')) {
+        return { stage: 3, status: '재생 가능', icon: '✅', color: 'text-green-600', bgColor: 'bg-green-100' };
+      } else if (clip.tags.includes('stage-3-failed')) {
+        return { stage: 3, status: '생성 실패', icon: '❌', color: 'text-red-600', bgColor: 'bg-red-100' };
+      } else if (clip.tags.includes('stage-2-thumbnail')) {
+        return { stage: 2, status: '영상 생성 중', icon: '🎬', color: 'text-blue-600', bgColor: 'bg-blue-100' };
+      } else if (clip.tags.includes('stage-1-json')) {
+        return { stage: 1, status: '썸네일 생성 중', icon: '📸', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+      } else {
+        return { stage: 0, status: '생성 대기', icon: '🔄', color: 'text-gray-600', bgColor: 'bg-gray-100' };
+      }
+    };
+    
+    const stageInfo = getStageInfo();
+    const isPlayable = stageInfo.stage === 3 && !clip.tags.includes('stage-3-failed');
+    
+    return (
+      <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
+        {/* 썸네일 */}
+        <div className="relative aspect-video bg-gray-900">
+          {clip.thumbnailPath && !thumbnailError ? (
+            <Image
+              src={clip.thumbnailPath}
+              alt={clip.title}
+              fill
+              className="object-cover"
+              unoptimized
+              onError={(e) => {
+                if (process.env.NODE_ENV === 'development') {
+                  console.error('썸네일 로드 실패:', clip.thumbnailPath);
+                }
+                setThumbnailError(true);
+              }}
+              onLoad={() => {
+                if (process.env.NODE_ENV === 'development') {
+                  console.log('썸네일 로드 성공:', clip.thumbnailPath);
+                }
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-800 to-gray-900">
+              <div className="text-center text-white">
+                <div className="text-4xl mb-2">🎬</div>
+                <div className="text-sm opacity-75">썸네일 없음</div>
+              </div>
+            </div>
+          )}
+          
+          {/* 좌측 상단 - DB 제목 */}
+          <div className="absolute top-2 left-2">
+            <div className="bg-black bg-opacity-80 text-white px-2 py-1 rounded text-xs font-medium max-w-[120px] truncate">
+              {clip.title}
+            </div>
+          </div>
+          
+          {/* 우측 상단 - 3단계 상태 표시 */}
+          <div className="absolute top-2 right-2">
+            <div className={`${stageInfo.bgColor} ${stageInfo.color} px-2 py-1 rounded text-xs font-medium flex items-center gap-1`}>
+              <span>{stageInfo.icon}</span>
+              <span>{stageInfo.status}</span>
+            </div>
+          </div>
+          
+          {/* 중앙 - 영어 자막 (유튜브 썸네일 스타일) */}
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="text-white text-center">
+              <div 
+                className="font-black leading-tight drop-shadow-lg"
+                style={{
+                  textShadow: '3px 3px 6px rgba(0,0,0,0.9), -2px -2px 4px rgba(0,0,0,0.9), 2px -2px 4px rgba(0,0,0,0.9), -2px 2px 4px rgba(0,0,0,0.9)',
+                  fontSize: 'clamp(16px, 4vw, 24px)'
+                }}
+              >
+                "{clip.englishSubtitle}"
+              </div>
+            </div>
+          </div>
+          
+          {/* 진행 중일 때 로딩 오버레이 */}
+          {!isPlayable && stageInfo.stage > 0 && (
+            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+              <div className="text-center text-white">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                <div className="text-sm font-medium">{stageInfo.status}</div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* 제목과 버튼 */}
+        <div className="p-3">
+          <h3 className="font-medium text-gray-800 mb-3 text-sm leading-tight truncate">
+            {clip.title}
+          </h3>
+          
+          {/* 액션 버튼들 */}
+          <div className="flex gap-2">
+            <button 
+              onClick={() => isPlayable ? window.open(clip.clipPath, '_blank') : null}
+              disabled={!isPlayable}
+              className={`flex-1 px-3 py-2 rounded text-xs transition-colors flex items-center justify-center gap-1 ${
+                isPlayable 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer' 
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {isPlayable ? '▶️ 재생' : `${stageInfo.icon} ${stageInfo.status}`}
+            </button>
+            <button 
+              onClick={async () => {
+                try {
+                  if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(clip.englishSubtitle);
+                  } else {
+                    // Fallback for non-HTTPS environments
+                    const textArea = document.createElement('textarea');
+                    textArea.value = clip.englishSubtitle;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand('copy');
+                    textArea.remove();
+                  }
+                  // 성공 피드백 (선택사항)
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('자막이 클립보드에 복사되었습니다:', clip.englishSubtitle);
+                  }
+                } catch (err) {
+                  console.warn('클립보드 복사 실패:', err);
+                  // 사용자에게 수동 복사 안내 (선택사항)
+                  alert(`클립보드 복사에 실패했습니다. 다음 텍스트를 수동으로 복사해주세요:\n\n${clip.englishSubtitle}`);
+                }
+              }}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded text-xs transition-colors"
+              title="자막 북마크"
+            >
+              🔖
+            </button>
+            <button 
+              onClick={() => deleteClip(clip.id)}
+              className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded text-xs transition-colors"
+              title="클립 삭제"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">검색 결과를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#0f0f23] transition-all duration-300 relative">
+      {/* ChatGPT Style Sidebar */}
+      <div className={`${sidebarCollapsed ? 'w-0 overflow-hidden' : 'w-64'} bg-[#171717] text-[#ececf1] flex flex-col border-r border-[#2d2d2d] transition-all duration-300 z-50`}>
+        <div className="p-4 border-b border-[#2d2d2d] flex justify-between items-center">
+          <button 
+            onClick={() => router.push('/')}
+            className="flex-1 bg-transparent border border-[#2d2d2d] text-[#ececf1] p-3 rounded-lg cursor-pointer transition-all duration-200 flex items-center gap-2 text-sm mr-2 hover:bg-[#2d2d2d]"
+          >
+            <span>➕</span>
+            <span>새 테마 검색</span>
+          </button>
+        </div>
+        
+        <div className="flex-1 p-4 overflow-y-auto max-h-[calc(100vh-80px)]">
+          <div className="mb-6">
+            <h3 className="text-xs text-[#8e8ea0] uppercase tracking-wide mb-3 font-semibold">최근 검색</h3>
+            {searchHistory.map((item, index) => (
+              <div key={index} className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d]">
+                {item.title} ({item.count}개 문장)
+              </div>
+            ))}
+          </div>
+          
+          <div className="mb-6">
+            <h3 className="text-xs text-[#8e8ea0] uppercase tracking-wide mb-3 font-semibold">즐겨찾기</h3>
+            <div className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d]">
+              ⭐ TOEIC 필수 표현
+            </div>
+            <div className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d]">
+              ⭐ 면접 영어 표현
+            </div>
+            <div className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d]">
+              ⭐ 친구와의 대화
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col bg-white overflow-hidden transition-all duration-300">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 p-3 flex items-center justify-between min-h-[60px]">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={toggleSidebar}
+              className="bg-transparent border border-gray-200 text-gray-700 p-2 rounded-md cursor-pointer transition-all duration-200 flex items-center justify-center w-9 h-9 hover:bg-gray-50"
+            >
+              <span>☰</span>
+            </button>
+            <div className="text-lg font-semibold text-gray-700 flex items-center gap-2">
+              🎯 {viewMode === 'clips' ? '클립 보기' : '검색 결과'}
+              {searchData && (
+                <span className="text-sm text-gray-500">
+                  {searchData.search_summary.total_sentences}개 문장, 총 {searchData.search_summary.total_results}개 결과
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-3 text-sm text-gray-500">
+            {searchData && (
+              <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
+                <span>⏱️</span>
+                <span>{searchData.search_summary.search_time}초</span>
+              </div>
+            )}
+            <button 
+              onClick={() => router.push('/results?view=clips')}
+              className="bg-blue-100 hover:bg-blue-200 px-3 py-2 rounded-xl flex items-center gap-1 text-blue-700 transition-colors cursor-pointer"
+            >
+              <span>🎬</span>
+              <span>클립 보기</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="bg-gray-50 border-b border-gray-200 px-6">
+          <div className="flex">
+            <button
+              onClick={() => setViewMode('search')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                viewMode === 'search'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              } ${!searchData ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!searchData}
+            >
+              🔍 검색 결과 {searchData ? `(${searchData.search_summary.total_results})` : ''}
+            </button>
+            <button
+              onClick={() => setViewMode('clips')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                viewMode === 'clips'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              🎬 클립 ({clips.length})
+            </button>
+          </div>
+          {/* 디버그 정보 */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-gray-500 p-2">
+              DEBUG: viewMode={viewMode}, hasSearchData={!!searchData}, clipsCount={clips.length}
+            </div>
+          )}
+        </div>
+
+        {/* Auto Clip Progress - Enhanced */}
+        {(autoClipProgress.isCreating || autoClipProgress.current) && (
+          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-blue-200 px-6 py-5 shadow-sm">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-4">
+                  {autoClipProgress.isCreating ? (
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="animate-spin rounded-full h-8 w-8 border-3 border-blue-200 border-t-blue-600"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+                        </div>
+                      </div>
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 text-2xl">✅</span>
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                    </div>
+                  )}
+                  <div className="flex flex-col">
+                    <span className="text-base font-semibold text-blue-900">
+                      {autoClipProgress.current}
+                    </span>
+                    {autoClipProgress.total > 0 && (
+                      <span className="text-sm text-blue-700">
+                        {Math.round(autoClipProgress.progress)}/{autoClipProgress.total} 클립 
+                        {autoClipProgress.isCreating ? '생성 중' : '완료'}
+                        {autoClipProgress.isCreating && (
+                          <span className="ml-2 text-xs text-blue-600">
+                            • 예상 시간: {Math.max(1, Math.round((autoClipProgress.total - autoClipProgress.progress) * 0.5))}분
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {autoClipProgress.total > 0 && (
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-blue-800">
+                        {Math.round((autoClipProgress.progress / autoClipProgress.total) * 100)}%
+                      </div>
+                      <div className="text-xs text-blue-600">
+                        {Math.round(autoClipProgress.progress)}/{autoClipProgress.total}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {autoClipProgress.total > 0 && (
+                <div className="w-full bg-blue-200 rounded-full h-4 overflow-hidden shadow-inner">
+                  <div 
+                    className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 h-full rounded-full transition-all duration-700 ease-out relative"
+                    style={{ width: `${Math.min((autoClipProgress.progress / autoClipProgress.total) * 100, 100)}%` }}
+                  >
+                    {autoClipProgress.isCreating && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {autoClipProgress.isCreating && (
+                <div className="mt-3 text-center">
+                  <p className="text-sm text-blue-700">
+                    🎬 미디어 파일에서 클립을 추출하고 있습니다... 잠시만 기다려주세요!
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {viewMode === 'search' && searchData ? (
+            <div className="max-w-6xl mx-auto">
+              {/* Search Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-8 border border-blue-100">
+                <h3 className="text-lg font-bold mb-4 text-center text-gray-800">📊 검색 요약</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-lg p-4 text-center border border-blue-100">
+                    <div className="text-2xl font-bold text-blue-600">{searchData.search_summary.total_sentences}</div>
+                    <div className="text-sm text-gray-600">검색된 문장</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 text-center border border-blue-100">
+                    <div className="text-2xl font-bold text-green-600">{searchData.search_summary.total_results}</div>
+                    <div className="text-sm text-gray-600">총 결과</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 text-center border border-blue-100">
+                    <div className="text-2xl font-bold text-purple-600">{searchData.search_summary.average_per_sentence}</div>
+                    <div className="text-sm text-gray-600">평균/문장</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 text-center border border-blue-100">
+                    <div className="text-2xl font-bold text-orange-600">{searchData.search_summary.search_time}s</div>
+                    <div className="text-sm text-gray-600">검색 시간</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Results */}
+              <div className="space-y-8">
+                {searchData.sentence_results.map((sentenceResult) => (
+                  <div key={sentenceResult.sentence_index} className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                    <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                      <h4 className="text-lg font-semibold text-gray-800 flex-1 mr-4">
+                        {sentenceResult.sentence_index}. "{sentenceResult.search_sentence}"
+                      </h4>
+                      <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
+                        {sentenceResult.found_count}개 결과
+                      </div>
+                    </div>
+
+                    {sentenceResult.results.length > 0 ? (
+                      <div className="grid gap-4">
+                        {sentenceResult.results.map((result, index) => (
+                          <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-100 hover:bg-gray-100 transition-colors">
+                            <div className="flex justify-between items-center mb-3 text-sm">
+                              <div className="flex items-center gap-3">
+                                <span className="font-semibold text-gray-800">{result.media_file}</span>
+                                <span className="bg-gray-200 px-2 py-1 rounded text-xs text-gray-600">
+                                  {result.directory}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-gray-500">
+                                <span className="font-mono">{formatTime(result.start_time)}</span>
+                                <span className={`font-semibold ${getConfidenceColor(result.confidence)}`}>
+                                  {getMatchType(result.confidence)}
+                                </span>
+                                <span className={`text-xs ${getConfidenceColor(result.confidence)}`}>
+                                  {(result.confidence * 100).toFixed(0)}%
+                                </span>
+                                <span>{getLanguageEmoji(result.language)}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="mb-3">
+                              <p className="text-gray-800 italic leading-relaxed">
+                                "{result.subtitle_text}"
+                              </p>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <button className="bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1 rounded text-sm transition-colors">
+                                🎬 재생
+                              </button>
+                              <button 
+                                onClick={() => createClip(sentenceResult.search_sentence, result, sentenceResult.sentence_index, index)}
+                                disabled={clippingStatus[`${sentenceResult.sentence_index}-${index}`]}
+                                className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-3 py-1 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {clippingStatus[`${sentenceResult.sentence_index}-${index}`] ? '🎬 클립 생성 중...' : '📎 클립 생성'}
+                              </button>
+                              <button className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1 rounded text-sm transition-colors">
+                                💾 저장
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <div className="text-4xl mb-2">🔍</div>
+                        <p>이 문장에 대한 결과를 찾을 수 없습니다.</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : viewMode === 'clips' ? (
+            <div className="max-w-6xl mx-auto">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">🎬 생성된 클립</h2>
+                <p className="text-gray-600">총 {clips.length}개의 클립이 있습니다.</p>
+                {/* 디버그 정보 추가 */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                    <strong>디버그:</strong> clips 배열 길이: {clips.length}
+                    {clips.length > 0 && (
+                      <div>첫 번째 클립: {JSON.stringify(clips[0], null, 2)}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {clips.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {clips.map((clip) => (
+                    <ClipCard key={clip.id} clip={clip} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="text-6xl mb-4">🎬</div>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">아직 생성된 클립이 없습니다</h3>
+                  <p className="text-gray-600 mb-6">검색 결과에서 클립을 생성해보세요.</p>
+                  {searchData && (
+                    <button
+                      onClick={() => setViewMode('search')}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                    >
+                      검색 결과로 이동
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="max-w-6xl mx-auto text-center py-16">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">검색 결과를 찾을 수 없습니다</h3>
+              <p className="text-gray-600 mb-6">새로운 검색을 시작해보세요.</p>
+              <button 
+                onClick={() => router.push('/')}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+              >
+                새 검색 시작
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-4 rounded-lg shadow-lg border border-white/20 backdrop-blur-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
+              <span className="font-medium">{toastMessage}</span>
+              <button 
+                onClick={() => setShowToast(false)}
+                className="ml-2 text-white/80 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

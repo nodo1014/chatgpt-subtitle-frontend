@@ -1,0 +1,742 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { SearchResult, SentenceResult, ClipGenerationStats } from './types';
+import { removeDuplicateResults } from './utils';
+import { BatchProcessingService } from './batch.service';
+
+// 시간 문자열을 초로 변환
+function timeToSeconds(timeStr: string): number {
+  const parts = timeStr.split(':');
+  const hours = parseInt(parts[0]);
+  const minutes = parseInt(parts[1]);
+  const secondsParts = parts[2].split(',');
+  const seconds = parseInt(secondsParts[0]);
+  const milliseconds = parseInt(secondsParts[1] || '0');
+  
+  return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+}
+
+// 파일명에서 제목 추출
+function extractTitle(filePath: string): string {
+  const fileName = path.basename(filePath, path.extname(filePath));
+  
+  // 시리즈 제목 추출 (예: "Batman The Animated Series (1992) - S01E01...")
+  const seriesMatch = fileName.match(/^([^(]+(?:\([^)]+\))?)\s*-?\s*S\d+E\d+/);
+  if (seriesMatch) {
+    return seriesMatch[1].trim();
+  }
+  
+  // 영화 제목 추출
+  const movieMatch = fileName.match(/^([^(]+(?:\([^)]+\))?)/);
+  if (movieMatch) {
+    return movieMatch[1].trim();
+  }
+  
+  return fileName;
+}
+
+// 파일 크기 체크 함수
+function checkFileSize(filePath: string): boolean {
+  try {
+    const stats = fs.statSync(filePath);
+    const fileSizeGB = stats.size / (1024 * 1024 * 1024);
+    
+    if (fileSizeGB > MAX_FILE_SIZE_GB) {
+      console.log(`📏 파일 크기 초과: ${fileSizeGB.toFixed(2)}GB > ${MAX_FILE_SIZE_GB}GB - 스킵`);
+      return false;
+    }
+    
+    console.log(`📏 파일 크기: ${fileSizeGB.toFixed(2)}GB (허용 범위)`);
+    return true;
+  } catch (error) {
+    console.log(`❌ 파일 크기 확인 실패: ${error}`);
+    return false;
+  }
+}
+
+// 블랙리스트 체크 함수
+function isBlacklistedFile(filePath: string): boolean {
+  const fileName = path.basename(filePath);
+  const isBlacklisted = PROBLEMATIC_FILES.some(blacklisted => fileName.includes(blacklisted));
+  
+  if (isBlacklisted) {
+    console.log(`🚫 블랙리스트 파일 감지 - 스킵: ${fileName}`);
+  }
+  
+  return isBlacklisted;
+}
+
+// 클립 생성 (최적화된 설정)
+async function createClip(mediaFile: string, startTime: string, endTime: string, outputPath: string): Promise<boolean> {
+  // 사전 체크: 블랙리스트 및 파일 크기
+  if (isBlacklistedFile(mediaFile)) {
+    return false;
+  }
+  
+  if (!checkFileSize(mediaFile)) {
+    return false;
+  }
+  
+  return new Promise((resolve) => {
+    const startSeconds = timeToSeconds(startTime);
+    const endSeconds = timeToSeconds(endTime);
+    const duration = endSeconds - startSeconds;
+    
+    console.log(`🔧 FFmpeg 명령어 실행:`);
+    console.log(`   입력: ${mediaFile}`);
+    console.log(`   시작: ${startSeconds}초, 길이: ${duration}초`);
+    console.log(`   출력: ${outputPath}`);
+    
+    const startTime_process = Date.now();
+    
+    // 60초 타임아웃 설정 (더 여유롭게)
+    const timeout = setTimeout(() => {
+      console.log(`⏰ FFmpeg 타임아웃 (60초) - 강제 종료: ${mediaFile}`);
+      ffmpeg.kill('SIGKILL');
+      resolve(false);
+    }, BATCH_CONFIG.CLIP_TIMEOUT);
+    
+    // 더 안정적인 FFmpeg 명령어 (copy 코덱 우선 시도)
+    const ffmpeg = spawn('ffmpeg', [
+      '-i', mediaFile,
+      '-ss', startSeconds.toString(),
+      '-t', duration.toString(),
+      '-c:v', 'copy',              // 비디오 복사 (재인코딩 없음, 가장 빠름)
+      '-c:a', 'copy',              // 오디오 복사 (재인코딩 없음, 가장 빠름)
+      '-avoid_negative_ts', 'make_zero', // 타임스탬프 문제 방지
+      '-y',                        // 기존 파일 덮어쓰기
+      outputPath
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe'] // stdout, stderr 캡처
+    });
+    
+    let stdout = '';
+    let stderr = '';
+    let lastProgressTime = Date.now();
+    
+    ffmpeg.stdout?.on('data', (data) => {
+      stdout += data.toString();
+      lastProgressTime = Date.now();
+    });
+    
+    ffmpeg.stderr?.on('data', (data) => {
+      const chunk = data.toString();
+      stderr += chunk;
+      lastProgressTime = Date.now();
+      
+      // 진행률 정보 추출 및 출력
+      if (chunk.includes('time=')) {
+        const timeMatch = chunk.match(/time=(\d{2}:\d{2}:\d{2}\.\d{2})/);
+        if (timeMatch) {
+          console.log(`⏳ FFmpeg 진행 중... 현재 시간: ${timeMatch[1]}`);
+        }
+      }
+    });
+    
+    // 진행 상황 모니터링 (10초마다 체크)
+    const progressMonitor = setInterval(() => {
+      const timeSinceLastProgress = Date.now() - lastProgressTime;
+      const totalTime = Date.now() - startTime_process;
+      
+      if (timeSinceLastProgress > 15000) { // 15초 동안 진행 없음
+        console.log(`⚠️ FFmpeg 진행 정지 감지 (${timeSinceLastProgress/1000}초 무응답)`);
+        console.log(`📊 총 경과 시간: ${totalTime/1000}초`);
+        console.log(`📁 처리 중인 파일: ${mediaFile}`);
+      }
+    }, 10000);
+    
+    ffmpeg.on('close', (code) => {
+      clearTimeout(timeout);
+      clearInterval(progressMonitor);
+      
+      const totalTime = Date.now() - startTime_process;
+      
+      if (code === 0) {
+        console.log(`✅ FFmpeg 성공 (코드: ${code}, 소요시간: ${totalTime/1000}초)`);
+        console.log(`📁 클립 파일 생성: ${outputPath}`);
+      } else {
+        console.log(`❌ FFmpeg 실패 (코드: ${code}, 소요시간: ${totalTime/1000}초)`);
+        console.log(`📁 실패한 파일: ${mediaFile}`);
+        console.log(`📝 stderr (마지막 1000자): ${stderr.slice(-1000)}`);
+        
+        // copy 코덱 실패 시 재인코딩으로 재시도하지 않음 (시간 절약)
+        console.log(`💡 copy 코덱 실패 - 이 파일은 스킵합니다 (재인코딩 시간 절약)`);
+      }
+      resolve(code === 0);
+    });
+    
+    ffmpeg.on('error', (error) => {
+      clearTimeout(timeout);
+      clearInterval(progressMonitor);
+      
+      const totalTime = Date.now() - startTime_process;
+      console.log(`❌ FFmpeg 프로세스 오류 (소요시간: ${totalTime/1000}초): ${error}`);
+      console.log(`📁 오류 발생 파일: ${mediaFile}`);
+      resolve(false);
+    });
+  });
+}
+
+// 썸네일 생성 (밝기 및 대비 향상)
+async function createThumbnail(mediaFile: string, timeStr: string, thumbnailPath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const seconds = timeToSeconds(timeStr);
+    
+    console.log(`🖼️ 썸네일 FFmpeg 명령어 실행:`);
+    console.log(`   입력: ${mediaFile}`);
+    console.log(`   시간: ${seconds}초`);
+    console.log(`   출력: ${thumbnailPath}`);
+    
+    const startTime_process = Date.now();
+    
+    // 45초 타임아웃 설정 (클립과 동일하게 증가)
+    const timeout = setTimeout(() => {
+      console.log(`⏰ 썸네일 FFmpeg 타임아웃 (45초) - 강제 종료: ${mediaFile}`);
+      ffmpeg.kill('SIGKILL');
+      resolve(false);
+    }, BATCH_CONFIG.THUMBNAIL_TIMEOUT);
+    
+    // 더 간단한 썸네일 생성 명령어 (복잡한 필터 제거)
+    const ffmpeg = spawn('ffmpeg', [
+      '-i', mediaFile,
+      '-ss', seconds.toString(),
+      '-vframes', '1',
+      '-vf', 'scale=320:180:force_original_aspect_ratio=decrease,pad=320:180:(ow-iw)/2:(oh-ih)/2', // 필터 단순화
+      '-q:v', '3', // 품질 고정 (더 안정적)
+      '-y',
+      thumbnailPath
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    
+    let stderr = '';
+    let stdout = '';
+    let lastProgressTime = Date.now();
+    
+    ffmpeg.stdout?.on('data', (data) => {
+      stdout += data.toString();
+      lastProgressTime = Date.now();
+    });
+    
+    ffmpeg.stderr?.on('data', (data) => {
+      const chunk = data.toString();
+      stderr += chunk;
+      lastProgressTime = Date.now();
+      
+      // 썸네일 진행률 로그
+      if (chunk.includes('frame=')) {
+        console.log(`🖼️ 썸네일 진행 중: ${chunk.trim()}`);
+      }
+    });
+    
+    // 진행 상황 모니터링 (5초마다 체크)
+    const progressMonitor = setInterval(() => {
+      const timeSinceLastProgress = Date.now() - lastProgressTime;
+      const totalTime = Date.now() - startTime_process;
+      
+      if (timeSinceLastProgress > 10000) { // 10초 동안 진행 없음
+        console.log(`⚠️ 썸네일 FFmpeg 진행 정지 감지 (${timeSinceLastProgress/1000}초 무응답)`);
+        console.log(`📊 총 경과 시간: ${totalTime/1000}초`);
+        console.log(`📁 처리 중인 파일: ${mediaFile}`);
+      }
+    }, 5000);
+    
+    ffmpeg.on('close', (code) => {
+      clearTimeout(timeout);
+      clearInterval(progressMonitor);
+      
+      const totalTime = Date.now() - startTime_process;
+      
+      if (code === 0) {
+        console.log(`✅ 썸네일 FFmpeg 성공 (코드: ${code}, 소요시간: ${totalTime/1000}초)`);
+        console.log(`📁 썸네일 파일 생성: ${thumbnailPath}`);
+      } else {
+        console.log(`❌ 썸네일 FFmpeg 실패 (코드: ${code}, 소요시간: ${totalTime/1000}초)`);
+        console.log(`📁 실패한 파일: ${mediaFile}`);
+        console.log(`📝 stderr (마지막 500자): ${stderr.slice(-500)}`);
+        console.log(`📝 stdout (마지막 300자): ${stdout.slice(-300)}`);
+      }
+      resolve(code === 0);
+    });
+    
+    ffmpeg.on('error', (error) => {
+      clearTimeout(timeout);
+      clearInterval(progressMonitor);
+      
+      const totalTime = Date.now() - startTime_process;
+      console.log(`❌ 썸네일 FFmpeg 프로세스 오류 (소요시간: ${totalTime/1000}초): ${error}`);
+      console.log(`📁 오류 발생 파일: ${mediaFile}`);
+      resolve(false);
+    });
+  });
+}
+
+// 자동 클립 생성
+async function autoCreateClip(sentence: string, result: SearchResult): Promise<ClipMetadata | null> {
+  const clipStartTime = Date.now();
+  
+  try {
+    console.log(`🎬 클립 생성 시작 - 문장: ${sentence.substring(0, 50)}...`);
+    console.log(`📹 소스: ${result.media_file} (${result.start_time} ~ ${result.end_time})`);
+    console.log(`⏰ 시작 시간: ${new Date().toLocaleTimeString()}`);
+    
+    // 동일한 클립이 이미 존재하는지 확인
+    const clipsDir = MEDIA_CONFIG.CLIPS_OUTPUT_PATH;
+    const existingFiles = await fs.promises.readdir(clipsDir).catch(() => []);
+    
+    // 기존 메타데이터 파일들을 확인하여 중복 방지
+    for (const file of existingFiles) {
+      if (file.endsWith('.json')) {
+        try {
+          const metadataPath = path.join(clipsDir, file);
+          const existingMetadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
+          
+          // 동일한 미디어 파일, 시작/종료 시간인 경우 중복으로 간주
+          if (existingMetadata.sourceFile === result.media_file &&
+              existingMetadata.startTime === result.start_time &&
+              existingMetadata.endTime === result.end_time) {
+            console.log(`🔄 중복 클립 감지, 기존 클립 반환: ${existingMetadata.title}`);
+            console.log(`   기존: ${existingMetadata.sourceFile} (${existingMetadata.startTime} ~ ${existingMetadata.endTime})`);
+            console.log(`   요청: ${result.media_file} (${result.start_time} ~ ${result.end_time})`);
+            return existingMetadata;
+          }
+        } catch {
+          // 메타데이터 파일 읽기 실패 시 무시
+          continue;
+        }
+      }
+    }
+    
+    const clipId = uuidv4();
+    const title = extractTitle(result.media_file);
+    
+    // Config를 사용한 파일 경로 설정
+    const clipPath = getClipOutputPath(clipId);
+    const thumbnailPath = getThumbnailOutputPath(clipId);
+    const mediaFilePath = getMediaFilePath(result.media_file, result.directory);
+    const metadataPath = path.join(MEDIA_CONFIG.CLIPS_OUTPUT_PATH, `${clipId}.json`);
+    
+    console.log(`📁 미디어 파일 경로: ${mediaFilePath}`);
+    console.log(`📁 클립 출력 경로: ${clipPath}`);
+    console.log(`📁 썸네일 출력 경로: ${thumbnailPath}`);
+    console.log(`📁 메타데이터 경로: ${metadataPath}`);
+    
+    // 1단계: JSON 메타데이터 먼저 생성 (중복 방지 및 진행 상황 추적)
+    const initialMetadata: ClipMetadata = {
+      id: clipId,
+      title,
+      sentence: result.subtitle_text,
+      englishSubtitle: result.subtitle_text,
+      koreanSubtitle: `한글 번역: ${sentence}`,
+      startTime: result.start_time,
+      endTime: result.end_time,
+      sourceFile: result.media_file,
+      clipPath: getClipWebPath(clipId),
+      thumbnailPath: undefined, // 아직 생성되지 않음
+      createdAt: new Date().toISOString(),
+      duration: `${timeToSeconds(result.end_time) - timeToSeconds(result.start_time)}초`,
+      tags: [title.split(' ')[0], 'auto-generated', 'processing'] // 처리 중 표시
+    };
+    
+    try {
+      // JSON 파일 먼저 생성 (즉시 중복 방지 효과)
+      await fs.promises.writeFile(metadataPath, JSON.stringify(initialMetadata, null, 2));
+      console.log(`📝 JSON 메타데이터 먼저 생성: ${metadataPath}`);
+      
+      // 2단계: 미디어 파일 존재 확인
+      console.log(`🔍 미디어 파일 존재 확인 중...`);
+      try {
+        const stats = await fs.promises.stat(mediaFilePath);
+        if (stats.isFile()) {
+          console.log(`✅ 미디어 파일 확인됨: ${mediaFilePath} (크기: ${Math.round(stats.size / 1024 / 1024)}MB)`);
+        } else {
+          console.log(`❌ 경로가 파일이 아닙니다: ${mediaFilePath}`);
+          // 실패 시 JSON 파일 삭제
+          await fs.promises.unlink(metadataPath);
+          return null;
+        }
+      } catch (error) {
+        console.log(`❌ 미디어 파일을 찾을 수 없습니다: ${mediaFilePath}`);
+        console.log(`🔍 오류 상세: ${error}`);
+        // 실패 시 JSON 파일 삭제
+        await fs.promises.unlink(metadataPath);
+        return null;
+      }
+
+      // 3단계: JSON 기반으로 MP4 클립 생성
+      console.log(`🎬 JSON 기반 클립 생성 시작: ${clipId}`);
+      const clipCreateStartTime = Date.now();
+      const clipSuccess = await createClip(mediaFilePath, result.start_time, result.end_time, clipPath);
+      const clipCreateTime = Date.now() - clipCreateStartTime;
+
+      if (!clipSuccess) {
+        console.log(`❌ 클립 생성 실패: ${result.media_file} (소요시간: ${clipCreateTime/1000}초)`);
+        // 실패 시 JSON 파일 삭제
+        await fs.promises.unlink(metadataPath);
+        return null;
+      }
+
+      console.log(`✅ 클립 생성 성공: ${clipPath} (소요시간: ${clipCreateTime/1000}초)`);
+      
+      // 4단계: 썸네일 생성
+      console.log(`🖼️ 썸네일 생성 시작: ${clipId}`);
+      const thumbnailCreateStartTime = Date.now();
+      const thumbnailSuccess = await createThumbnail(mediaFilePath, result.start_time, thumbnailPath);
+      const thumbnailCreateTime = Date.now() - thumbnailCreateStartTime;
+      
+      console.log(`${thumbnailSuccess ? '✅' : '❌'} 썸네일 생성: ${thumbnailPath} (소요시간: ${thumbnailCreateTime/1000}초)`);
+      
+      // 5단계: JSON 메타데이터 최종 업데이트 (processing 태그 제거, 썸네일 경로 추가)
+      const finalMetadata: ClipMetadata = {
+        ...initialMetadata,
+        thumbnailPath: thumbnailSuccess ? getThumbnailWebPath(clipId) : undefined,
+        tags: [title.split(' ')[0], 'auto-generated'] // processing 태그 제거
+      };
+      
+      await fs.promises.writeFile(metadataPath, JSON.stringify(finalMetadata, null, 2));
+      
+      const totalTime = Date.now() - clipStartTime;
+      console.log(`🎉 클립 생성 완료: ${title} (총 소요시간: ${totalTime/1000}초)`);
+      console.log(`   - 클립 생성: ${clipCreateTime/1000}초`);
+      console.log(`   - 썸네일 생성: ${thumbnailCreateTime/1000}초`);
+      console.log(`⏰ 완료 시간: ${new Date().toLocaleTimeString()}`);
+      
+      return finalMetadata;
+      
+    } catch (error) {
+      console.log(`❌ 클립 생성 중 오류 발생: ${error}`);
+      console.log(`📁 오류 발생 파일: ${result.media_file}`);
+      
+      // 실패 시 생성된 파일들 정리
+      try {
+        await fs.promises.unlink(metadataPath);
+        await fs.promises.unlink(clipPath);
+        await fs.promises.unlink(thumbnailPath);
+      } catch {
+        // 파일 삭제 실패는 무시
+      }
+      
+      return null;
+    }
+    
+  } catch (error) {
+    const totalTime = Date.now() - clipStartTime;
+    console.log(`❌ 클립 생성 전체 실패: ${error} (소요시간: ${totalTime/1000}초)`);
+    console.log(`📁 실패한 파일: ${result.media_file}`);
+    return null;
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const data = await request.json();
+    console.log('🎯 AUTO-CLIPS API 호출됨!');
+    console.log(`📥 받은 데이터:`, { sentence_results_count: data.sentence_results?.length || 0 });
+
+    if (!data.sentence_results || !Array.isArray(data.sentence_results)) {
+      return NextResponse.json({ error: 'sentence_results가 필요합니다.' }, { status: 400 });
+    }
+
+    const allResults: SearchResult[] = [];
+    
+    // 모든 검색 결과를 하나의 배열로 수집
+    data.sentence_results.forEach((sentenceResult: any, index: number) => {
+      console.log(`📝 문장 ${index + 1}: "${sentenceResult.search_sentence}" - ${sentenceResult.results?.length || 0}개 결과`);
+      
+      if (sentenceResult.results && Array.isArray(sentenceResult.results)) {
+        sentenceResult.results.forEach((result: SearchResult, resultIndex: number) => {
+          console.log(`   결과 ${resultIndex + 1}: ${result.media_file} (${result.start_time} ~ ${result.end_time})`);
+          allResults.push({
+            ...result,
+            sentence: sentenceResult.search_sentence // 원본 검색 문장 추가
+          });
+        });
+      }
+    });
+
+    console.log(`🎬 총 ${allResults.length}개 클립 생성 시작 - 3단계 배치 처리`);
+    console.log(`⏰ 시작 시간: ${new Date().toLocaleTimeString()}`);
+
+    // 중복 제거 (동일한 미디어 파일 + 시간대)
+    const processedClips = new Set<string>();
+    const uniqueResults: SearchResult[] = [];
+
+    for (const result of allResults) {
+      const clipKey = `${result.media_file}|${result.start_time}|${result.end_time}`;
+      
+      if (processedClips.has(clipKey)) {
+        console.log(`🔄 중복 클립 건너뛰기: ${result.media_file} (${result.start_time} ~ ${result.end_time})`);
+        continue;
+      }
+      
+      processedClips.add(clipKey);
+      uniqueResults.push(result);
+    }
+
+    console.log(`📊 중복 제거 후: ${uniqueResults.length}개 클립 (${allResults.length - uniqueResults.length}개 중복 제거)`);
+
+    // 🔥 3단계 배치 처리 시작
+    const batchStartTime = Date.now();
+    
+    // ===== 1단계: JSON 메타데이터 일괄 생성 =====
+    console.log(`\n🏗️ === 1단계: JSON 메타데이터 일괄 생성 (${uniqueResults.length}개) ===`);
+    const stage1StartTime = Date.now();
+    
+    const jsonResults = await createJSONBatch(uniqueResults);
+    const stage1Time = Date.now() - stage1StartTime;
+    
+    console.log(`✅ 1단계 완료: ${jsonResults.length}개 JSON 생성 (소요시간: ${stage1Time/1000}초)`);
+    
+    // ===== 2단계: 썸네일 일괄 생성 =====
+    console.log(`\n📸 === 2단계: 썸네일 일괄 생성 (${jsonResults.length}개) ===`);
+    const stage2StartTime = Date.now();
+    
+    const thumbnailResults = await createThumbnailBatch(jsonResults);
+    const stage2Time = Date.now() - stage2StartTime;
+    
+    console.log(`✅ 2단계 완료: ${thumbnailResults.success}개 썸네일 생성, ${thumbnailResults.failed}개 실패 (소요시간: ${stage2Time/1000}초)`);
+    
+    // ===== 3단계: 영상 클립 일괄 생성 =====
+    console.log(`\n🎬 === 3단계: 영상 클립 일괄 생성 (${jsonResults.length}개) ===`);
+    const stage3StartTime = Date.now();
+    
+    const clipResults = await createClipBatch(jsonResults);
+    const stage3Time = Date.now() - stage3StartTime;
+    
+    console.log(`✅ 3단계 완료: ${clipResults.success}개 클립 생성, ${clipResults.failed}개 실패 (소요시간: ${stage3Time/1000}초)`);
+    
+    // 최종 결과 정리
+    const totalTime = Date.now() - batchStartTime;
+    console.log(`\n🎉 === 3단계 배치 처리 완료 ===`);
+    console.log(`📊 총 처리 시간: ${totalTime/1000}초`);
+    console.log(`   - 1단계 (JSON): ${stage1Time/1000}초`);
+    console.log(`   - 2단계 (썸네일): ${stage2Time/1000}초`);
+    console.log(`   - 3단계 (클립): ${stage3Time/1000}초`);
+    console.log(`📈 성공률: JSON ${jsonResults.length}개, 썸네일 ${thumbnailResults.success}개, 클립 ${clipResults.success}개`);
+    console.log(`⏰ 완료 시간: ${new Date().toLocaleTimeString()}`);
+
+    return NextResponse.json({
+      success: true,
+      message: `3단계 배치 처리 완료`,
+      total_created: clipResults.success, // 프론트엔드에서 사용하는 필드
+      total_processed: jsonResults.length, // 프론트엔드에서 사용하는 필드
+      stats: {
+        total_requested: allResults.length,
+        duplicates_removed: allResults.length - uniqueResults.length,
+        json_created: jsonResults.length,
+        thumbnails_created: thumbnailResults.success,
+        clips_created: clipResults.success,
+        total_time_seconds: totalTime / 1000,
+        stage_times: {
+          json: stage1Time / 1000,
+          thumbnails: stage2Time / 1000,
+          clips: stage3Time / 1000
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ AUTO-CLIPS API 오류:', error);
+    return NextResponse.json({ 
+      error: '클립 생성 중 오류가 발생했습니다.',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
+  }
+}
+
+// ===== 1단계: JSON 메타데이터 일괄 생성 =====
+async function createJSONBatch(results: SearchResult[]): Promise<ClipMetadata[]> {
+  const jsonResults: ClipMetadata[] = [];
+  
+  // 기존 클립 확인 (중복 방지)
+  const clipsDir = MEDIA_CONFIG.CLIPS_OUTPUT_PATH;
+  const existingFiles = await fs.promises.readdir(clipsDir).catch(() => []);
+  const existingMetadata: ClipMetadata[] = [];
+  
+  for (const file of existingFiles) {
+    if (file.endsWith('.json')) {
+      try {
+        const metadataPath = path.join(clipsDir, file);
+        const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
+        existingMetadata.push(metadata);
+      } catch {
+        continue;
+      }
+    }
+  }
+  
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    console.log(`📝 JSON 생성 ${i + 1}/${results.length}: ${result.media_file}`);
+    
+    // 문제 파일 스킵
+    const fileName = path.basename(result.media_file);
+    if (PROBLEMATIC_FILES.includes(fileName)) {
+      console.log(`⚠️ 문제 파일 스킵: ${fileName} (블랙리스트에 등록됨)`);
+      continue;
+    }
+    
+    // 중복 확인
+    const isDuplicate = existingMetadata.some(existing => 
+      existing.sourceFile === result.media_file &&
+      existing.startTime === result.start_time &&
+      existing.endTime === result.end_time
+    );
+    
+    if (isDuplicate) {
+      console.log(`🔄 기존 클립 발견, 건너뛰기: ${result.media_file}`);
+      continue;
+    }
+    
+    // 미디어 파일 존재 확인
+    const mediaFilePath = getMediaFilePath(result.media_file, result.directory);
+    try {
+      const stats = await fs.promises.stat(mediaFilePath);
+      if (!stats.isFile()) {
+        console.log(`❌ 파일이 아님: ${mediaFilePath}`);
+        continue;
+      }
+      
+      // 파일 크기 확인 (너무 큰 파일 스킵)
+      const fileSizeMB = stats.size / 1024 / 1024;
+      if (fileSizeMB > 3000) { // 3GB 이상 파일 스킵
+        console.log(`⚠️ 파일 크기 초과 스킵: ${mediaFilePath} (${Math.round(fileSizeMB)}MB)`);
+        continue;
+      }
+      
+      console.log(`✅ 파일 확인: ${mediaFilePath} (${Math.round(fileSizeMB)}MB)`);
+    } catch (error) {
+      console.log(`❌ 파일 없음: ${mediaFilePath}`);
+      continue;
+    }
+    
+    // JSON 메타데이터 생성
+    const clipId = uuidv4();
+    const title = extractTitle(result.media_file);
+    const metadataPath = path.join(MEDIA_CONFIG.CLIPS_OUTPUT_PATH, `${clipId}.json`);
+    
+    const metadata: ClipMetadata = {
+      id: clipId,
+      title,
+      sentence: result.subtitle_text,
+      englishSubtitle: result.subtitle_text,
+      koreanSubtitle: `한글 번역: ${result.sentence || ''}`,
+      startTime: result.start_time,
+      endTime: result.end_time,
+      sourceFile: result.media_file,
+      clipPath: getClipWebPath(clipId),
+      thumbnailPath: undefined, // 2단계에서 생성
+      createdAt: new Date().toISOString(),
+      duration: `${timeToSeconds(result.end_time) - timeToSeconds(result.start_time)}초`,
+      tags: [title.split(' ')[0], 'auto-generated', 'stage-1-json'] // 1단계 완료 표시
+    };
+    
+    try {
+      await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+      jsonResults.push(metadata);
+      console.log(`✅ JSON 생성: ${clipId}`);
+    } catch (error) {
+      console.log(`❌ JSON 생성 실패: ${error}`);
+    }
+  }
+  
+  return jsonResults;
+}
+
+// ===== 2단계: 썸네일 일괄 생성 =====
+async function createThumbnailBatch(jsonResults: ClipMetadata[]): Promise<{success: number, failed: number}> {
+  const BATCH_SIZE = BATCH_CONFIG.THUMBNAIL_BATCH_SIZE; // 동시 처리 개수 (2개로 감소)
+  let success = 0;
+  let failed = 0;
+  
+  // 배치 단위로 처리
+  for (let i = 0; i < jsonResults.length; i += BATCH_SIZE) {
+    const batch = jsonResults.slice(i, i + BATCH_SIZE);
+    console.log(`📸 썸네일 배치 ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(jsonResults.length/BATCH_SIZE)}: ${batch.length}개 처리`);
+    
+    const promises = batch.map(async (metadata) => {
+      const thumbnailPath = getThumbnailOutputPath(metadata.id);
+      const mediaFilePath = getMediaFilePath(metadata.sourceFile);
+      
+      console.log(`🖼️ 썸네일 생성 시작: ${metadata.id}`);
+      const thumbnailSuccess = await createThumbnail(mediaFilePath, metadata.startTime, thumbnailPath);
+      
+      if (thumbnailSuccess) {
+        // JSON 업데이트 (stage-2-thumbnail 태그 추가)
+        const updatedMetadata = {
+          ...metadata,
+          thumbnailPath: getThumbnailWebPath(metadata.id),
+          tags: metadata.tags.filter(tag => tag !== 'stage-1-json').concat(['stage-2-thumbnail'])
+        };
+        
+        const metadataPath = path.join(MEDIA_CONFIG.CLIPS_OUTPUT_PATH, `${metadata.id}.json`);
+        await fs.promises.writeFile(metadataPath, JSON.stringify(updatedMetadata, null, 2));
+        
+        console.log(`✅ 썸네일 완료: ${metadata.id}`);
+        return true;
+      } else {
+        console.log(`❌ 썸네일 실패: ${metadata.id}`);
+        return false;
+      }
+    });
+    
+    const results = await Promise.all(promises);
+    success += results.filter(r => r).length;
+    failed += results.filter(r => !r).length;
+  }
+  
+  return { success, failed };
+}
+
+// ===== 3단계: 영상 클립 일괄 생성 =====
+async function createClipBatch(jsonResults: ClipMetadata[]): Promise<{success: number, failed: number}> {
+  const BATCH_SIZE = BATCH_CONFIG.CLIP_BATCH_SIZE; // 동시 처리 개수 (2개로 감소)
+  let success = 0;
+  let failed = 0;
+  
+  // 배치 단위로 처리
+  for (let i = 0; i < jsonResults.length; i += BATCH_SIZE) {
+    const batch = jsonResults.slice(i, i + BATCH_SIZE);
+    console.log(`🎬 클립 배치 ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(jsonResults.length/BATCH_SIZE)}: ${batch.length}개 처리`);
+    
+    const promises = batch.map(async (metadata) => {
+      const clipPath = getClipOutputPath(metadata.id);
+      const mediaFilePath = getMediaFilePath(metadata.sourceFile);
+      
+      console.log(`🎬 클립 생성 시작: ${metadata.id}`);
+      const clipSuccess = await createClip(mediaFilePath, metadata.startTime, metadata.endTime, clipPath);
+      
+      if (clipSuccess) {
+        // JSON 최종 업데이트 (stage-3-complete 태그로 변경)
+        const finalMetadata = {
+          ...metadata,
+          tags: metadata.tags.filter(tag => !tag.startsWith('stage-')).concat(['stage-3-complete'])
+        };
+        
+        const metadataPath = path.join(MEDIA_CONFIG.CLIPS_OUTPUT_PATH, `${metadata.id}.json`);
+        await fs.promises.writeFile(metadataPath, JSON.stringify(finalMetadata, null, 2));
+        
+        console.log(`✅ 클립 완료: ${metadata.id}`);
+        return true;
+      } else {
+        console.log(`❌ 클립 실패: ${metadata.id}`);
+        
+        // 실패 시 JSON에 실패 표시
+        const failedMetadata = {
+          ...metadata,
+          tags: metadata.tags.filter(tag => !tag.startsWith('stage-')).concat(['stage-3-failed'])
+        };
+        
+        const metadataPath = path.join(MEDIA_CONFIG.CLIPS_OUTPUT_PATH, `${metadata.id}.json`);
+        await fs.promises.writeFile(metadataPath, JSON.stringify(failedMetadata, null, 2));
+        
+        return false;
+      }
+    });
+    
+    const results = await Promise.all(promises);
+    success += results.filter(r => r).length;
+    failed += results.filter(r => !r).length;
+  }
+  
+  return { success, failed };
+}

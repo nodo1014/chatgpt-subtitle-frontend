@@ -74,9 +74,15 @@ export default function Home() {
       return;
     }
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 배치 검색 시작:', batchText);
+    }
     setIsSearching(true);
 
     try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📤 API 요청 전송 중...');
+      }
       const response = await fetch('/api/batch-search', {
         method: 'POST',
         headers: {
@@ -89,10 +95,22 @@ export default function Home() {
       });
 
       const data = await response.json();
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📥 API 응답 받음:', data);
+      }
 
       if (data.success) {
+        // 자동 클립 생성 플래그 추가
+        data.auto_create_clips = true;
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ auto_create_clips 플래그 설정:', data.auto_create_clips);
+        }
+        
         // 검색 결과 페이지로 이동
         const searchDataParam = encodeURIComponent(JSON.stringify(data));
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🚀 결과 페이지로 이동 중...');
+        }
         router.push(`/results?data=${searchDataParam}`);
       } else {
         alert(data.error || '검색 중 오류가 발생했습니다.');
@@ -135,6 +153,42 @@ export default function Home() {
           </div>
           
           <div className="mb-6">
+            <h3 className="text-xs text-[#8e8ea0] uppercase tracking-wide mb-3 font-semibold">학습 메뉴</h3>
+            <div 
+              onClick={() => router.push('/dictation')}
+              className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d] flex items-center gap-2"
+            >
+              <span>✍️</span>
+              <span>받아쓰기 연습</span>
+            </div>
+            <div 
+              onClick={() => router.push('/ebook')}
+              className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d] flex items-center gap-2"
+            >
+              <span>📚</span>
+              <span>전자책 읽기</span>
+            </div>
+            <div 
+              onClick={() => router.push('/results?view=clips')}
+              className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d] flex items-center gap-2"
+            >
+              <span>🎬</span>
+              <span>클립 보기</span>
+            </div>
+          </div>
+          
+          <div className="mb-6">
+            <h3 className="text-xs text-[#8e8ea0] uppercase tracking-wide mb-3 font-semibold">시스템</h3>
+            <div 
+              onClick={() => router.push('/settings')}
+              className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d] flex items-center gap-2"
+            >
+              <span>⚙️</span>
+              <span>환경설정</span>
+            </div>
+          </div>
+          
+          <div className="mb-6">
             <h3 className="text-xs text-[#8e8ea0] uppercase tracking-wide mb-3 font-semibold">즐겨찾기</h3>
             <div className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d]">
               ⭐ TOEIC 필수 표현
@@ -164,18 +218,38 @@ export default function Home() {
               <span className="text-sm text-gray-500">테마별 다중 문장 검색</span>
             </div>
           </div>
-          <div className="hidden md:flex gap-5 text-sm text-gray-500">
-            <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
-              <span>📊</span>
-              <span>270K+ 문장</span>
-            </div>
-            <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
-              <span>🎬</span>
-              <span>7개 미디어</span>
-            </div>
-            <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
-              <span>⚡</span>
-              <span>AI 추천</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/dictation')}
+              className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 text-sm font-medium"
+            >
+              ✍️ 받아쓰기
+            </button>
+            <button
+              onClick={() => router.push('/ebook')}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 text-sm font-medium"
+            >
+              📚 전자책
+            </button>
+            <button
+              onClick={() => router.push('/results?view=clips')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 text-sm font-medium"
+            >
+              🎬 클립 보기
+            </button>
+            <div className="hidden lg:flex gap-5 text-sm text-gray-500">
+              <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
+                <span>📊</span>
+                <span>270K+ 문장</span>
+              </div>
+              <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
+                <span>🎬</span>
+                <span>7개 미디어</span>
+              </div>
+              <div className="bg-gray-100 px-2 py-1 rounded-xl flex items-center gap-1 text-gray-700">
+                <span>⚡</span>
+                <span>AI 추천</span>
+              </div>
             </div>
           </div>
         </div>
@@ -237,7 +311,7 @@ see you later
                         disabled={isSearching}
                         className="bg-blue-600 text-white border border-blue-600 rounded-lg px-6 py-3 text-sm font-semibold cursor-pointer transition-all duration-300 flex items-center gap-2 hover:bg-blue-700 hover:border-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isSearching ? '🔄 검색 중...' : '🔍 배치 검색 시작'}
+                        {isSearching ? '🎬 검색 & 클립 생성 중...' : '🎬 검색하면서 클립 만들기'}
                       </button>
                     </div>
                   </div>

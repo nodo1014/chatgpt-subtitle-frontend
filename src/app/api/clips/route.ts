@@ -1,46 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server';
+import path from 'path';
+import fs from 'fs';
 
-export async function POST(request: NextRequest) {
-  try {
-    const { sentence, media_file, start_time, end_time } = await request.json();
-
-    // Python 백엔드 API 호출
-    const response = await fetch('http://localhost:5000/api/request-clip', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        sentence,
-        media_file,
-        start_time,
-        end_time
-      })
-    });
-
-    const data = await response.json();
-    
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('클립 요청 오류:', error);
-    return NextResponse.json(
-      { success: false, error: '클립 요청 중 오류가 발생했습니다.' },
-      { status: 500 }
-    );
-  }
+interface ClipMetadata {
+  id: string;
+  title: string;
+  sentence: string;
+  englishSubtitle: string;
+  koreanSubtitle: string;
+  startTime: string;
+  endTime: string;
+  sourceFile: string;
+  clipPath: string;
+  thumbnailPath?: string;
+  createdAt: string;
+  duration: string;
+  tags: string[];
 }
 
 export async function GET() {
   try {
-    // 대기 중인 클립 목록 조회
-    const response = await fetch('http://localhost:5000/api/pending-clips');
-    const data = await response.json();
+    const clipsDir = path.join(process.cwd(), 'public', 'clips');
     
-    return NextResponse.json(data);
+    // 클립 디렉토리가 없으면 빈 배열 반환
+    try {
+      await fs.promises.access(clipsDir);
+    } catch {
+      return NextResponse.json({
+        success: true,
+        clips: []
+      });
+    }
+
+    const files = await fs.promises.readdir(clipsDir);
+    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    
+    const clips: ClipMetadata[] = [];
+    
+    for (const file of jsonFiles) {
+      try {
+        const filePath = path.join(clipsDir, file);
+        const content = await fs.promises.readFile(filePath, 'utf-8');
+        const metadata = JSON.parse(content);
+        clips.push(metadata);
+      } catch (error) {
+        console.error(`메타데이터 파일 읽기 오류: ${file}`, error);
+      }
+    }
+    
+    // 생성 날짜 순으로 정렬 (최신순)
+    clips.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    return NextResponse.json({
+      success: true,
+      clips
+    });
   } catch (error) {
     console.error('클립 목록 조회 오류:', error);
     return NextResponse.json(
-      { success: false, error: '클립 목록 조회 중 오류가 발생했습니다.' },
+      { 
+        success: false, 
+        error: '클립 목록을 불러오는 중 오류가 발생했습니다.' 
+      }, 
       { status: 500 }
     );
   }
