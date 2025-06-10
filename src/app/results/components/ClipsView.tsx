@@ -1,7 +1,6 @@
 'use client';
 
 import { ClipMetadata, SearchData } from '../types';
-import ClipCard from './ClipCard';
 
 interface ClipsViewProps {
   clips: ClipMetadata[];
@@ -37,15 +36,98 @@ export default function ClipsView({
       </div>
       
       {clips.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {clips.map((clip) => (
-            <ClipCard 
-              key={clip.id} 
-              clip={clip} 
-              onDelete={onDeleteClip}
-              onToast={onToast}
-            />
-          ))}
+        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    썸네일
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    제목 / 문장
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    시간
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    태그
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    액션
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {clips.map((clip) => (
+                  <tr key={clip.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {clip.thumbnailPath ? (
+                        <img
+                          src={clip.thumbnailPath}
+                          alt="썸네일"
+                          className="w-24 h-14 object-cover rounded border shadow-sm brightness-125 contrast-125 saturate-110 hover:brightness-150 transition-all duration-200"
+                        />
+                      ) : (
+                        <div className="w-24 h-14 bg-gray-200 rounded border flex items-center justify-center">
+                          <span className="text-xs text-gray-500">썸네일 없음</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 truncate max-w-xs">
+                          {clip.title}
+                        </div>
+                        <div className="text-sm text-gray-600 truncate max-w-xs">
+                          {clip.sentence}
+                        </div>
+                        {clip.koreanSubtitle && (
+                          <div className="text-xs text-blue-600 truncate max-w-xs">
+                            {clip.koreanSubtitle}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div>{clip.startTime} ~ {clip.endTime}</div>
+                      <div className="text-xs text-gray-500">{clip.duration}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-1">
+                        {clip.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => window.open(clip.clipPath, '_blank')}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                          title="클립 재생"
+                        >
+                          ▶️
+                        </button>
+                        <button
+                          onClick={() => onDeleteClip(clip.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          title="클립 삭제"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="text-center py-16">

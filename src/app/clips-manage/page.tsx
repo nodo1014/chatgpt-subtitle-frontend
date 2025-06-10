@@ -324,10 +324,10 @@ export default function ClipsManagePage() {
                           <img
                             src={clip.thumbnailPath}
                             alt="썸네일"
-                            className="w-16 h-9 object-cover rounded border"
+                            className="w-24 h-14 object-cover rounded border shadow-sm brightness-125 contrast-125 saturate-110 hover:brightness-150 transition-all duration-200"
                           />
                         ) : (
-                          <div className="w-16 h-9 bg-gray-200 rounded border flex items-center justify-center">
+                          <div className="w-24 h-14 bg-gray-200 rounded border flex items-center justify-center">
                             <span className="text-xs text-gray-500">썸네일 없음</span>
                           </div>
                         )}

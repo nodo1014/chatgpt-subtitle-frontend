@@ -50,7 +50,7 @@ export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
             src={clip.thumbnailPath}
             alt={clip.title}
             fill
-            className="object-cover"
+            className="object-cover brightness-125 contrast-125 saturate-110 hover:brightness-150 transition-all duration-200"
             unoptimized
             onError={() => setThumbnailError(true)}
             onLoad={() => setThumbnailError(false)}

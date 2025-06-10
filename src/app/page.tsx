@@ -35,12 +35,7 @@ export default function Home() {
       { title: '💼 비즈니스 미팅 영어', count: 12, timestamp: '2024-01-14' },
       { title: '☕ 일상 대화 표현', count: 18, timestamp: '2024-01-13' },
       { title: '😊 감정 표현하기', count: 20, timestamp: '2024-01-12' },
-      { title: '🍕 음식 관련 표현', count: 16, timestamp: '2024-01-11' },
-      { title: '✈️ 여행 영어 표현', count: 22, timestamp: '2024-01-10' },
-      { title: '🎓 학교생활 표현', count: 14, timestamp: '2024-01-09' },
-      { title: '💪 운동과 건강', count: 19, timestamp: '2024-01-08' },
-      { title: '🎬 영화 리뷰 표현', count: 17, timestamp: '2024-01-07' },
-      { title: '🛍️ 쇼핑 영어', count: 13, timestamp: '2024-01-06' },
+
     ];
     setSearchHistory(sampleHistory);
   };
