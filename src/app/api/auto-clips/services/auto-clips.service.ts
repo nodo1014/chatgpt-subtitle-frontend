@@ -1,6 +1,7 @@
 import { SearchResult, SentenceResult, ClipGenerationStats, ClipMetadata, BatchResult } from '../types';
 import { removeDuplicateResults } from '../utils';
 import { BatchProcessingService } from './batch.service';
+import { ClipDatabaseService } from '../../clips-manage/services/clip-database.service';
 
 /**
  * 자동 클립 생성 서비스 클래스
@@ -25,7 +26,10 @@ export class AutoClipsService {
     const processingResult = await this.execute3StageProcessing(uniqueResults);
     const totalTime = Date.now() - startTime;
     
-    // 4. 결과 반환
+    // 4. 데이터베이스에 성공한 클립들 저장
+    await this.saveCompletedClipsToDatabase(processingResult.jsonResults, processingResult.clipResults.success);
+    
+    // 5. 결과 반환
     return this.generateResponse(allResults.length, duplicatesCount, processingResult, totalTime);
   }
 
@@ -72,6 +76,34 @@ export class AutoClipsService {
     };
   }
 
+  private static async saveCompletedClipsToDatabase(jsonResults: ClipMetadata[], successCount: number) {
+    if (successCount > 0) {
+      console.log(`💾 데이터베이스에 ${successCount}개 클립 저장 시작...`);
+      
+      // 데이터베이스 초기화
+      await ClipDatabaseService.initDatabase();
+      
+      // 성공적으로 생성된 클립들만 저장 (completed 태그를 가진 클립들)
+      const completedClips = jsonResults.filter(clip => 
+        clip.tags && clip.tags.includes('completed')
+      );
+      
+      let savedCount = 0;
+      for (const clip of completedClips) {
+        try {
+          const success = await ClipDatabaseService.createClip(clip);
+          if (success) {
+            savedCount++;
+          }
+        } catch (error) {
+          console.error(`❌ 클립 DB 저장 실패: ${clip.id}`, error);
+        }
+      }
+      
+      console.log(`💾 데이터베이스에 ${savedCount}/${completedClips.length}개 클립 저장 완료`);
+    }
+  }
+
   private static generateResponse(
     totalRequested: number,
     duplicatesCount: number,
@@ -86,31 +118,17 @@ export class AutoClipsService {
     const { jsonResults, thumbnailResults, clipResults } = processingResult;
 
     return {
-      success: true,
       total_requested: totalRequested,
-      total_processed: jsonResults.length,
-      total_created: clipResults.success,
-      total_failed: clipResults.failed,
       duplicates_removed: duplicatesCount,
-      stage_results: {
-        stage1_json: {
-          success: jsonResults.length,
-          failed: 0,
-          time_seconds: processingResult.stageTimes.stage1 / 1000
-        },
-        stage2_thumbnail: {
-          success: thumbnailResults.success,
-          failed: thumbnailResults.failed,
-          time_seconds: processingResult.stageTimes.stage2 / 1000
-        },
-        stage3_clip: {
-          success: clipResults.success,
-          failed: clipResults.failed,
-          time_seconds: processingResult.stageTimes.stage3 / 1000
-        }
-      },
+      json_created: jsonResults.length,
+      thumbnails_created: thumbnailResults.success,
+      clips_created: clipResults.success,
       total_time_seconds: totalTime / 1000,
-      created_clips: []
+      stage_times: {
+        json: processingResult.stageTimes.stage1 / 1000,
+        thumbnails: processingResult.stageTimes.stage2 / 1000,
+        clips: processingResult.stageTimes.stage3 / 1000
+      }
     };
   }
 }

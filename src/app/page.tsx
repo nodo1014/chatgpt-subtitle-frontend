@@ -180,6 +180,13 @@ export default function Home() {
           <div className="mb-6">
             <h3 className="text-xs text-[#8e8ea0] uppercase tracking-wide mb-3 font-semibold">시스템</h3>
             <div 
+              onClick={() => router.push('/clips-manage')}
+              className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d] flex items-center gap-2"
+            >
+              <span>🗄️</span>
+              <span>클립 관리</span>
+            </div>
+            <div 
               onClick={() => router.push('/settings')}
               className="p-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-0.5 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d] flex items-center gap-2"
             >
