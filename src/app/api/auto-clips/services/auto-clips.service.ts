@@ -79,28 +79,60 @@ export class AutoClipsService {
   private static async saveCompletedClipsToDatabase(jsonResults: ClipMetadata[], successCount: number) {
     if (successCount > 0) {
       console.log(`💾 데이터베이스에 ${successCount}개 클립 저장 시작...`);
+      console.log(`📝 jsonResults 개수: ${jsonResults.length}`);
       
       // 데이터베이스 초기화
       await ClipDatabaseService.initDatabase();
       
-      // 성공적으로 생성된 클립들만 저장 (completed 태그를 가진 클립들)
-      const completedClips = jsonResults.filter(clip => 
-        clip.tags && clip.tags.includes('completed')
-      );
+      // 새로 생성된 클립 파일들을 스캔해서 데이터베이스에 저장
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      const clipsDir = path.join(process.cwd(), 'public', 'clips');
+      console.log(`📁 클립 디렉토리: ${clipsDir}`);
       
       let savedCount = 0;
-      for (const clip of completedClips) {
+      
+      for (const clip of jsonResults) {
         try {
-          const success = await ClipDatabaseService.createClip(clip);
-          if (success) {
-            savedCount++;
+          console.log(`🔍 클립 처리 중: ${clip.id}`);
+          
+          const jsonFilePath = path.join(clipsDir, `${clip.id}.json`);
+          const clipFilePath = path.join(clipsDir, `${clip.id}.mp4`);
+          
+          console.log(`📄 JSON 파일: ${jsonFilePath}`);
+          console.log(`🎬 MP4 파일: ${clipFilePath}`);
+          
+          // JSON 파일과 MP4 파일이 모두 존재하는지 확인
+          if (fs.existsSync(jsonFilePath) && fs.existsSync(clipFilePath)) {
+            console.log(`✅ 파일들이 존재함`);
+            
+            const jsonContent = JSON.parse(fs.readFileSync(jsonFilePath, 'utf8'));
+            console.log(`📋 JSON 내용 태그: ${JSON.stringify(jsonContent.tags)}`);
+            
+            // completed 태그가 있는지 확인
+            if (jsonContent.tags && jsonContent.tags.includes('completed')) {
+              console.log(`🏁 completed 태그 발견, DB 저장 시도...`);
+              
+              const success = await ClipDatabaseService.createClip(jsonContent);
+              if (success) {
+                savedCount++;
+                console.log(`✅ 클립 DB 저장 성공: ${clip.id}`);
+              } else {
+                console.log(`❌ 클립 DB 저장 실패: ${clip.id}`);
+              }
+            } else {
+              console.log(`⚠️ completed 태그 없음: ${clip.id}`);
+            }
+          } else {
+            console.log(`❌ 파일이 존재하지 않음 - JSON: ${fs.existsSync(jsonFilePath)}, MP4: ${fs.existsSync(clipFilePath)}`);
           }
         } catch (error) {
           console.error(`❌ 클립 DB 저장 실패: ${clip.id}`, error);
         }
       }
       
-      console.log(`💾 데이터베이스에 ${savedCount}/${completedClips.length}개 클립 저장 완료`);
+      console.log(`💾 데이터베이스에 ${savedCount}/${jsonResults.length}개 클립 저장 완료`);
     }
   }
 
