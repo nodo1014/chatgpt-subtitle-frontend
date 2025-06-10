@@ -48,27 +48,24 @@ export default function Home() {
   const extractEnglishSentences = (text: string): string[] => {
     const koreanRegex = /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g;
     
-    const lines = text.split('\n').filter(line => {
-      const cleanLine = line.trim();
-      return cleanLine.length > 0 && !koreanRegex.test(cleanLine);
+    // 줄바꿈으로 문장 분리
+    const lines = text.split('\n').map(line => line.trim()).filter(line => {
+      // 빈 줄 제거
+      if (line.length === 0) return false;
+      
+      // 한글/중국어/일본어 문자가 포함된 줄 제거
+      if (koreanRegex.test(line)) return false;
+      
+      // 최소 길이 체크 (3글자 이상)
+      if (line.length < 3) return false;
+      
+      // 최소 단어 수 체크 (2개 이상의 단어)
+      if (line.split(/\s+/).length < 2) return false;
+      
+      return true;
     });
     
-    const sentences: string[] = [];
-    const sentenceRegex = /[A-Z][^.!?]*[.!?]/g;
-    
-    lines.forEach(line => {
-      const matches = line.match(sentenceRegex);
-      if (matches) {
-        matches.forEach(sentence => {
-          const trimmed = sentence.trim();
-          if (trimmed.length >= 10 && trimmed.split(' ').length >= 3) {
-            sentences.push(trimmed);
-          }
-        });
-      }
-    });
-    
-    return sentences;
+    return lines;
   };
 
   const performBatchSearch = async () => {
@@ -195,20 +192,20 @@ export default function Home() {
                 
                 <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
                   <label htmlFor="batchTextInput" className="block text-base font-semibold mb-2.5 text-gray-700">
-                    📝 영어 문장들 입력 (한 줄에 하나씩)
+                    📝 영어 문장들 입력 (줄바꿈으로 구분)
                   </label>
                   <textarea 
                     id="batchTextInput"
                     value={batchText}
                     onChange={(e) => setBatchText(e.target.value)}
                     className="w-full min-h-[160px] p-4 border border-gray-200 rounded-lg bg-white text-gray-700 text-base leading-relaxed resize-vertical transition-all duration-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    placeholder={`I love you so much.
-You make me happy.
-How are you doing today?
-Can you help me with this?
-What do you think about it?
+                    placeholder={`i love you so much
+you make me happy
+how are you doing today
+can you help me with this
+what do you think about it
 
-(영어 문장을 여러 줄로 입력하세요. 대문자로 시작하고 마침표로 끝나는 문장을 자동으로 추출합니다.)`}
+(영어 문장을 한 줄에 하나씩 입력하세요. 대소문자 구분 없이 검색 가능합니다.)`}
                     rows={6}
                   />
                   

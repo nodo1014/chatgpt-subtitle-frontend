@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     if (extractedSentences.length === 0) {
       return NextResponse.json({
         success: false,
-        error: '영어 문장을 찾을 수 없습니다. 대문자로 시작하고 마침표로 끝나는 문장을 입력해주세요.'
+        error: '영어 문장을 찾을 수 없습니다. 각 줄에 하나씩 영어 문장을 입력해주세요.'
       }, { status: 400 });
     }
 
@@ -116,30 +116,24 @@ function extractEnglishSentences(text: string): string[] {
   // 한글, 한자, 일본어 문자 제거 (유니코드 범위)
   const koreanRegex = /[\u1100-\u11FF\u3130-\u318F\uAC00-\uD7AF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g;
   
-  // 1단계: 한글/중국어/일본어 문자가 포함된 줄 제거
-  const lines = text.split('\n').filter(line => {
-    const cleanLine = line.trim();
-    return cleanLine.length > 0 && !koreanRegex.test(cleanLine);
+  // 줄바꿈으로 문장 분리
+  const lines = text.split('\n').map(line => line.trim()).filter(line => {
+    // 빈 줄 제거
+    if (line.length === 0) return false;
+    
+    // 한글/중국어/일본어 문자가 포함된 줄 제거
+    if (koreanRegex.test(line)) return false;
+    
+    // 최소 길이 체크 (3글자 이상)
+    if (line.length < 3) return false;
+    
+    // 최소 단어 수 체크 (2개 이상의 단어)
+    if (line.split(/\s+/).length < 2) return false;
+    
+    return true;
   });
   
-  // 2단계: 영어 문장 추출 (대문자로 시작하고 .?!로 끝나는 문장)
-  const sentences: string[] = [];
-  const sentenceRegex = /[A-Z][^.!?]*[.!?]/g;
-  
-  lines.forEach(line => {
-    const matches = line.match(sentenceRegex);
-    if (matches) {
-      matches.forEach(sentence => {
-        const trimmed = sentence.trim();
-        // 최소 길이 체크 (너무 짧은 문장 제외)
-        if (trimmed.length >= 10 && trimmed.split(' ').length >= 3) {
-          sentences.push(trimmed);
-        }
-      });
-    }
-  });
-  
-  return sentences;
+  return lines;
 }
 
 function searchInData(data: SubtitleData[], query: string, limit: number): SearchResult[] {
