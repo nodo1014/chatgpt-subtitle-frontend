@@ -79,9 +79,15 @@ export default function ResultsPage() {
       const data = await response.json();
       
       if (data.success) {
-        alert('클립 요청이 등록되었습니다! 관리자가 수동으로 처리합니다.');
+        if (data.type === 'immediate') {
+          alert(`🎉 클립이 성공적으로 생성되었습니다!\n📁 경로: ${data.output_path || '클립 폴더 확인'}`);
+        } else if (data.type === 'queued') {
+          alert(`⚠️ ${data.message}\n🔧 수동 처리가 필요할 수 있습니다.`);
+        } else {
+          alert('✅ 클립이 처리되었습니다!');
+        }
       } else {
-        alert(`클립 요청 실패: ${data.error}`);
+        alert(`❌ 클립 요청 실패: ${data.error}`);
       }
     } catch (error) {
       console.error('클립 요청 오류:', error);
@@ -248,7 +254,7 @@ export default function ResultsPage() {
                           disabled={clippingStatus[`${sentenceResult.sentence_index}-${index}`]}
                           className="bg-yellow-100 hover:bg-yellow-200 text-yellow-800 px-3 py-1 rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {clippingStatus[`${sentenceResult.sentence_index}-${index}`] ? '🔄 요청 중...' : '📎 클립 요청'}
+                          {clippingStatus[`${sentenceResult.sentence_index}-${index}`] ? '🎬 클립 생성 중...' : '📎 클립 생성'}
                         </button>
                         <button className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1 rounded text-sm transition-colors">
                           💾 저장
