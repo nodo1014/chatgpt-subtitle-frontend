@@ -25,18 +25,18 @@ export const CLIP_CONFIG = {
     CLIP_OPTIONS: [
       '-c:v', 'libx264',        // H.264 비디오 코덱 (웹 표준)
       '-c:a', 'aac',            // AAC 오디오 코덱 (웹 표준)
-      '-preset', 'ultrafast',   // 가장 빠른 인코딩 (품질 vs 속도 - 속도 우선)
-      '-crf', '28',             // 적절한 품질 (클립용으로는 충분)
+      '-preset', 'ultrafast',   // 인코딩 속도 (ultrafast=최고속도, fast=균형, slow=고품질)
+      '-crf', '28',             // 품질 설정 (18=고품질, 23=기본값, 28=적절)
       '-movflags', '+faststart', // 웹 스트리밍 최적화
       '-threads', '0',          // 모든 CPU 코어 사용
       '-avoid_negative_ts', 'make_zero',
       '-y'
     ],
 
-    // 썸네일 생성 기본 옵션 (밝기/대비 개선)
+    // 썸네일 생성 기본 옵션 (밝기/대비 강화 - 어두운 영화용)
     THUMBNAIL_OPTIONS: [
       '-vframes', '1',
-      '-vf', 'scale=320:180:force_original_aspect_ratio=decrease,pad=320:180:(ow-iw)/2:(oh-ih)/2,eq=brightness=0.15:contrast=1.3:saturation=1.2',
+      '-vf', 'scale=320:180:force_original_aspect_ratio=decrease,pad=320:180:(ow-iw)/2:(oh-ih)/2,eq=brightness=0.5:contrast=1.8:saturation=1.4',
       '-q:v', '2',  // 품질 향상 (3→2)
       '-y'
     ]
