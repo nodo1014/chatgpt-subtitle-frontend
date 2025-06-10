@@ -21,10 +21,14 @@ export const CLIP_CONFIG = {
 
   // FFmpeg 설정
   FFMPEG: {
-    // 클립 생성 기본 옵션
+    // 클립 생성 기본 옵션 (웹 호환성을 위한 표준 코덱 사용)
     CLIP_OPTIONS: [
-      '-c:v', 'copy',
-      '-c:a', 'copy',
+      '-c:v', 'libx264',        // H.264 비디오 코덱 (웹 표준)
+      '-c:a', 'aac',            // AAC 오디오 코덱 (웹 표준)
+      '-preset', 'ultrafast',   // 가장 빠른 인코딩 (품질 vs 속도 - 속도 우선)
+      '-crf', '28',             // 적절한 품질 (클립용으로는 충분)
+      '-movflags', '+faststart', // 웹 스트리밍 최적화
+      '-threads', '0',          // 모든 CPU 코어 사용
       '-avoid_negative_ts', 'make_zero',
       '-y'
     ],
