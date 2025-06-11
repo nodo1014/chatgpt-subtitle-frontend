@@ -33,10 +33,10 @@ export const CLIP_CONFIG = {
       '-y'
     ],
 
-    // 썸네일 생성 기본 옵션 (밝기/대비 강화 - 어두운 영화용)
+    // 썸네일 생성 기본 옵션 (밝기/대비 개선)
     THUMBNAIL_OPTIONS: [
       '-vframes', '1',
-      '-vf', 'scale=320:180:force_original_aspect_ratio=decrease,pad=320:180:(ow-iw)/2:(oh-ih)/2,eq=brightness=0.5:contrast=1.8:saturation=1.4',
+      '-vf', 'scale=320:180:force_original_aspect_ratio=decrease,pad=320:180:(ow-iw)/2:(oh-ih)/2,eq=brightness=0.15:contrast=1.3:saturation=1.2',
       '-q:v', '2',  // 품질 향상 (3→2)
       '-y'
     ]

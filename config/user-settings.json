@@ -7,7 +7,7 @@
       "VIDEO_CODEC": "libx264",
       "AUDIO_CODEC": "aac",
       "THUMBNAIL_FORMAT": "jpg",
-      "THUMBNAIL_SIZE": "320x180",
+      "THUMBNAIL_SIZE": "1280x720",
       "THUMBNAIL_QUALITY": 2,
       "THUMBNAIL_BRIGHTNESS": 0.1,
       "THUMBNAIL_CONTRAST": 1.2,
