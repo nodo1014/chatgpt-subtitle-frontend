@@ -209,6 +209,20 @@ export default function SecondarySidebar({ activeMenu, isCollapsed }: SecondaryS
                   <span>🗄️</span>
                   <span>클립 데이터베이스</span>
                 </button>
+                <button 
+                  onClick={() => router.push('/clip-studio')}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white p-3 rounded-lg cursor-pointer transition-all duration-200 flex items-center gap-2 text-sm hover:from-purple-700 hover:to-blue-700 mb-2"
+                >
+                  <span>🎬</span>
+                  <span>클립 스튜디오</span>
+                </button>
+                <button 
+                  onClick={() => router.push('/subtitle-manager')}
+                  className="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white p-3 rounded-lg cursor-pointer transition-all duration-200 flex items-center gap-2 text-sm hover:from-green-700 hover:to-teal-700 mb-2"
+                >
+                  <span>📝</span>
+                  <span>자막 관리</span>
+                </button>
                 <div className="space-y-2">
                   <button className="w-full text-left p-2.5 rounded-lg cursor-pointer transition-all duration-200 text-sm leading-tight text-[#e5e5e5] hover:bg-[#2d2d2d] flex items-center gap-2">
                     <span>📁</span>

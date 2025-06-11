@@ -1,0 +1,76 @@
+{
+  "videoId": "SPAWN - S03 E06 - Prophecy (480p - DVDRip)",
+  "tracks": [
+    {
+      "language": "en",
+      "entries": [
+        {
+          "start": 30.0,
+          "end": 32.5,
+          "text": "You're looking at",
+          "confidence": 0.95
+        },
+        {
+          "start": 32.5,
+          "end": 35.0,
+          "text": "the most dangerous man",
+          "confidence": 0.98
+        },
+        {
+          "start": 35.0,
+          "end": 37.5,
+          "text": "in the world.",
+          "confidence": 0.92
+        },
+        {
+          "start": 38.0,
+          "end": 40.5,
+          "text": "He's got power beyond imagination.",
+          "confidence": 0.89
+        },
+        {
+          "start": 41.0,
+          "end": 43.0,
+          "text": "And he's angry.",
+          "confidence": 0.96
+        }
+      ]
+    },
+    {
+      "language": "ko",
+      "entries": [
+        {
+          "start": 30.0,
+          "end": 32.5,
+          "text": "당신이 보고 있는 것은",
+          "confidence": 0.88
+        },
+        {
+          "start": 32.5,
+          "end": 35.0,
+          "text": "세상에서 가장 위험한 남자입니다",
+          "confidence": 0.91
+        },
+        {
+          "start": 35.0,
+          "end": 37.5,
+          "text": "세상에서 말이죠.",
+          "confidence": 0.85
+        },
+        {
+          "start": 38.0,
+          "end": 40.5,
+          "text": "그는 상상을 초월하는 힘을 가지고 있습니다.",
+          "confidence": 0.82
+        },
+        {
+          "start": 41.0,
+          "end": 43.0,
+          "text": "그리고 그는 화가 나 있습니다.",
+          "confidence": 0.89
+        }
+      ]
+    }
+  ],
+  "lastUpdated": "2025-06-12T00:00:00.000Z"
+}

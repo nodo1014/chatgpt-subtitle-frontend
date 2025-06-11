@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 interface PrimarySidebarProps {
   activeMenu: string;
   onMenuChange: (menu: string) => void;
@@ -22,12 +24,18 @@ const menuIcons: MenuIcon[] = [
 ];
 
 export default function PrimarySidebar({ activeMenu, onMenuChange, isCollapsed }: PrimarySidebarProps) {
+  const router = useRouter();
+
   return (
     <div className={`${isCollapsed ? 'w-0 overflow-hidden' : 'w-12'} bg-[#1e1e1e] flex flex-col border-r border-[#2d2d2d] transition-all duration-300 z-50`}>
-      {/* 상단 로고/앱 아이콘 */}
+      {/* 상단 홈 아이콘 */}
       <div className="p-2 border-b border-[#2d2d2d] flex items-center justify-center">
-        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
-          Y
+        <div 
+          onClick={() => router.push('/')}
+          className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-lg cursor-pointer hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+          title="홈으로 이동"
+        >
+          🏠
         </div>
       </div>
 
