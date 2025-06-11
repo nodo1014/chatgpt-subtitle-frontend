@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "fts-sync": "node fts-sync-manager.js",
+    "fts-rebuild": "node fts-sync-manager.js rebuild",
+    "fts-check": "node analyze-db-sync.js"
+  }
+}

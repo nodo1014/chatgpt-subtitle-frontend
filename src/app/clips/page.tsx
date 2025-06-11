@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import AppLayout from '@/components/layout/AppLayout';
 
 interface ClipRequest {
   id: string;

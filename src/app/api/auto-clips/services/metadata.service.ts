@@ -64,9 +64,9 @@ export class MetadataService {
     return {
       id: clipId,
       title,
-      sentence: result.subtitle_text,
+      sentence: result.sentence || '', // 사용자 검색어
       englishSubtitle: result.subtitle_text,
-      koreanSubtitle: `한글 번역: ${result.sentence || ''}`,
+      koreanSubtitle: this.findKoreanSubtitle(result) || 'X', // 한글 자막 또는 X
       startTime: result.start_time,
       endTime: result.end_time,
       sourceFile: result.media_file,
@@ -76,6 +76,17 @@ export class MetadataService {
       duration: `${timeToSeconds(result.end_time) - timeToSeconds(result.start_time)}초`,
       tags: [title.split(' ')[0], 'auto-generated', 'stage-1-json']
     };
+  }
+
+  /**
+   * 한글 자막 찾기 (현재는 DB에 한글 자막이 없으므로 null 반환)
+   * @param result 검색 결과
+   * @returns 한글 자막 또는 null
+   */
+  private static findKoreanSubtitle(result: SearchResult): string | null {
+    // TODO: 향후 한글 자막 DB가 구축되면 여기서 검색
+    // 현재는 한글 자막이 DB에 없으므로 null 반환
+    return null;
   }
 
   /**

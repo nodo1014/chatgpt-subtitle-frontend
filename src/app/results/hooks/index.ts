@@ -20,7 +20,7 @@ export const useResultsData = () => {
   const [clippingStatus, setClippingStatus] = useState<ClippingStatus>({});
   const [clips, setClips] = useState<ClipMetadata[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('search');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // 기본적으로 숨김
   const [searchHistory, setSearchHistory] = useState<HistoryItem[]>([]);
   const [autoClipProgress, setAutoClipProgress] = useState<AutoClipProgress>({ 
     isCreating: false, 

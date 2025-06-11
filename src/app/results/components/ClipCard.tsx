@@ -13,6 +13,9 @@ interface ClipCardProps {
 export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
   const [thumbnailError, setThumbnailError] = useState(false);
   
+  // 썸네일 경로가 없으면 기본 경로 생성
+  const thumbnailPath = clip.thumbnailPath || `/thumbnails/${clip.id}.jpg`;
+  
   // 3단계 상태 확인
   const getStageInfo = (): StageInfo => {
     if (clip.tags.includes('completed')) {
@@ -44,20 +47,20 @@ export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
       {/* 썸네일 */}
-      <div className="relative aspect-video bg-gray-900">
-        {clip.thumbnailPath && !thumbnailError ? (
+      <div className="relative aspect-video bg-gray-100">
+        {thumbnailPath && !thumbnailError ? (
           <Image
-            src={clip.thumbnailPath}
+            src={thumbnailPath}
             alt={clip.title}
             fill
-            className="object-cover"
+            className="object-cover brightness-110 contrast-105"
             unoptimized
             onError={() => setThumbnailError(true)}
             onLoad={() => setThumbnailError(false)}
           />
         ) : (
-          <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-800 to-gray-900">
-            <div className="text-white text-4xl">🎬</div>
+          <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-400 to-purple-500">
+            <div className="text-white text-4xl drop-shadow-lg">🎬</div>
           </div>
         )}
         
@@ -79,27 +82,37 @@ export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
         {/* 중앙 - 영어 자막 (유튜브 썸네일 스타일) */}
         <div className="absolute inset-0 flex items-center justify-center p-4">
           <div className="text-white text-center">
-            <div className="bg-black bg-opacity-60 p-3 rounded-lg max-w-[90%]">
-              <p className="text-sm md:text-base font-medium leading-tight">
-                {clip.englishSubtitle}
-              </p>
-            </div>
+            <p className="text-sm md:text-base font-bold leading-tight" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.9), -2px -2px 4px rgba(0,0,0,0.9), 2px -2px 4px rgba(0,0,0,0.9), -2px 2px 4px rgba(0,0,0,0.9)'}}>
+              {clip.englishSubtitle}
+            </p>
           </div>
         </div>
         
         {/* 진행 중일 때 로딩 오버레이 */}
         {!isPlayable && stageInfo.stage > 0 && (
-          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          <div className="absolute inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white drop-shadow-lg"></div>
           </div>
         )}
       </div>
       
       {/* 제목과 버튼 */}
       <div className="p-3">
-        <h3 className="font-medium text-gray-800 mb-3 text-sm leading-tight truncate">
+        <h3 className="font-medium text-gray-800 mb-1 text-sm leading-tight truncate">
           {clip.title}
         </h3>
+        
+        {/* 검색어 표시 */}
+        {clip.sentence && (
+          <div className="mb-2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded border-l-2 border-blue-400">
+            <span className="font-medium">검색어:</span> {clip.sentence}
+          </div>
+        )}
+        
+        {/* 한글 자막 표시 */}
+        <div className="mb-3 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded border-l-2 border-gray-400">
+          <span className="font-medium">한글:</span> {clip.koreanSubtitle}
+        </div>
         
         {/* 액션 버튼들 */}
         <div className="flex gap-2">

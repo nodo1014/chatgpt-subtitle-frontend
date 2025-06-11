@@ -21,7 +21,7 @@ export default function ClipsView({
   onNewSearch 
 }: ClipsViewProps) {
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full h-full">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">🎬 생성된 클립</h2>
         <p className="text-gray-600">총 {clips.length}개의 클립이 있습니다.</p>
@@ -37,7 +37,7 @@ export default function ClipsView({
       </div>
       
       {clips.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
           {clips.map((clip) => (
             <ClipCard 
               key={clip.id} 

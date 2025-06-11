@@ -17,7 +17,7 @@ export default function SearchResults({
   onCreateAutoClips 
 }: SearchResultsProps) {
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full h-full">
       {/* Search Summary */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-8 border border-blue-100">
         <h3 className="text-lg font-bold mb-4 text-center text-gray-800">📊 검색 요약</h3>
