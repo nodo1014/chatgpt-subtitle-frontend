@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import AIClipAnalyzer from '@/components/ai/AIClipAnalyzer';
-import StandardTabs from '@/components/ui/StandardTabs';
 
 interface ClipData {
   id: string;
@@ -165,21 +164,6 @@ export default function ClipsManagePage() {
     return true;
   });
 
-  const handleClipSelect = (clipId: string) => {
-    const newSelected = new Set(selectedClips);
-    if (newSelected.has(clipId)) {
-      newSelected.delete(clipId);
-    } else {
-      newSelected.add(clipId);
-    }
-    setSelectedClips(newSelected);
-  };
-
-  const handleAIAnalysis = (clip: ClipData) => {
-    setSelectedClipForAI(clip);
-    setActiveTab('ai-analysis');
-  };
-
   return (
     <AppLayout 
       title="클립 관리"
@@ -195,28 +179,6 @@ export default function ClipsManagePage() {
       }
     >
       <div className="space-y-6">
-        {/* 탭 네비게이션 */}
-        <StandardTabs
-          tabs={[
-            {
-              id: 'manage',
-              label: '클립 관리',
-              icon: '📋'
-            },
-            {
-              id: 'ai-analysis',
-              label: 'AI 분석',
-              icon: '🤖',
-              badge: selectedClipForAI ? '선택됨' : undefined
-            }
-          ]}
-          activeTab={activeTab}
-          onTabChange={(tabId) => setActiveTab(tabId as 'manage' | 'ai-analysis')}
-        />
-
-        {/* 클립 관리 탭 */}
-        {activeTab === 'manage' && (
-          <div className="space-y-6">
 
         {/* 마이그레이션 상태 */}
         {migrationStatus && (
@@ -405,13 +367,6 @@ export default function ClipsManagePage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleAIAnalysis(clip)}
-                            className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
-                            title="AI 분석"
-                          >
-                            🤖
-                          </button>
-                          <button
                             onClick={() => toggleBookmark(clip.id, clip.isBookmarked || false)}
                             className={`p-2 rounded-lg ${
                               clip.isBookmarked 
@@ -437,7 +392,288 @@ export default function ClipsManagePage() {
               </table>
             </div>
           )}
+  const filteredClips = clips.filter(clip => {
+    const matchesSearch = !searchQuery || 
+      clip.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      clip.sentence?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      clip.englishSubtitle?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesBookmark = filterBookmarked === undefined || clip.isBookmarked === filterBookmarked;
+    
+    return matchesSearch && matchesBookmark;
+  });
+
+  const handleClipSelect = (clipId: string) => {
+    const newSelected = new Set(selectedClips);
+    if (newSelected.has(clipId)) {
+      newSelected.delete(clipId);
+    } else {
+      newSelected.add(clipId);
+    }
+    setSelectedClips(newSelected);
+  };
+
+  const handleAIAnalysis = (clip: ClipData) => {
+    setSelectedClipForAI(clip);
+    setActiveTab('ai-analysis');
+  };
+
+  return (
+    <AppLayout 
+      title="클립 관리" 
+      subtitle="클립 데이터베이스 관리 및 검색" 
+      icon="🗄️"
+      headerChildren={
+        <Link href="/">
+          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            메인으로
+          </button>
+        </Link>
+      }
+    >
+      <div className="p-6">
+        {/* 탭 네비게이션 */}
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('manage')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'manage'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📋 클립 관리
+            </button>
+            <button
+              onClick={() => setActiveTab('ai-analysis')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'ai-analysis'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              🤖 AI 분석
+              {selectedClipForAI && (
+                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                  선택됨
+                </span>
+              )}
+            </button>
+          </nav>
         </div>
+
+        {/* 클립 관리 탭 */}
+        {activeTab === 'manage' && (
+          <div>
+            {/* 마이그레이션 상태 */}
+            {migrationStatus && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">📊 마이그레이션 상태</h3>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-blue-600 font-medium">JSON 파일:</span>
+                    <span className="ml-2 text-blue-900">{migrationStatus.jsonFiles}개</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-600 font-medium">DB 레코드:</span>
+                    <span className="ml-2 text-blue-900">{migrationStatus.dbRecords}개</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-600 font-medium">마이그레이션 필요:</span>
+                    <span className={`ml-2 font-medium ${migrationStatus.needMigration ? 'text-red-600' : 'text-green-600'}`}>
+                      {migrationStatus.needMigration ? '예' : '아니오'}
+                    </span>
+                  </div>
+                </div>
+                {migrationStatus.needMigration && (
+                  <button
+                    onClick={handleMigration}
+                    disabled={loading}
+                    className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {loading ? '마이그레이션 중...' : '마이그레이션 실행'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* 검색 및 필터 */}
+            <div className="mb-6 flex gap-4 items-center">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  placeholder="클립 검색 (제목, 내용, 자막)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <select
+                value={filterBookmarked === undefined ? 'all' : filterBookmarked.toString()}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFilterBookmarked(value === 'all' ? undefined : value === 'true');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">전체</option>
+                <option value="true">북마크만</option>
+                <option value="false">일반</option>
+              </select>
+              <button
+                onClick={loadClips}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                🔄 새로고침
+              </button>
+            </div>
+
+            {/* 선택된 클립 액션 */}
+            {selectedClips.size > 0 && (
+              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 mb-3">
+                  <strong>{selectedClips.size}개</strong> 클립이 선택되었습니다.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleBulkBookmark}
+                    className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 transition-colors"
+                  >
+                    일괄 북마크
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+                  >
+                    일괄 삭제
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 클립 목록 */}
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-gray-600">클립 로딩 중...</p>
+              </div>
+            ) : (
+              <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <input
+                          type="checkbox"
+                          checked={selectedClips.size === filteredClips.length && filteredClips.length > 0}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedClips(new Set(filteredClips.map(clip => clip.id)));
+                            } else {
+                              setSelectedClips(new Set());
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        썸네일
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        제목 & 내용
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        시간
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        액션
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredClips.map((clip) => (
+                      <tr key={clip.id} className={selectedClips.has(clip.id) ? 'bg-blue-50' : ''}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedClips.has(clip.id)}
+                            onChange={() => handleClipSelect(clip.id)}
+                            className="rounded border-gray-300"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {clip.thumbnailPath ? (
+                            <img
+                              src={clip.thumbnailPath}
+                              alt={clip.title}
+                              className="h-16 w-16 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="h-16 w-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                              🎬
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{clip.title}</div>
+                          <div className="text-sm text-gray-500 mt-1">
+                            {clip.englishSubtitle || clip.sentence}
+                          </div>
+                          {clip.koreanSubtitle && (
+                            <div className="text-sm text-blue-600 mt-1">{clip.koreanSubtitle}</div>
+                          )}
+                          <div className="flex items-center mt-2 space-x-2">
+                            {clip.isBookmarked && <span className="text-yellow-500">⭐</span>}
+                            {clip.tags?.map((tag, index) => (
+                              <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div>{clip.startTime} - {clip.endTime}</div>
+                          {clip.duration && <div className="text-xs text-gray-400">길이: {clip.duration}</div>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleAIAnalysis(clip)}
+                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg"
+                              title="AI 분석"
+                            >
+                              🤖
+                            </button>
+                            <button
+                              onClick={() => handleBookmark(clip.id)}
+                              className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg"
+                              title="북마크"
+                            >
+                              {clip.isBookmarked ? '⭐' : '☆'}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(clip.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                              title="삭제"
+                            >
+                              🗑️
+                            </button>
+                            <button
+                              onClick={() => window.open(clip.clipPath, '_blank')}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                              title="클립 재생"
+                            >
+                              ▶️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

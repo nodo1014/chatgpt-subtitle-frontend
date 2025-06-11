@@ -99,6 +99,26 @@ export default function RightPanel({ clip, isVisible, onClose }: RightPanelProps
     { id: 'timeline', label: '타임라인', icon: '⏰' }
   ];
 
+  const getTabActiveStyle = (tabId: string) => {
+    const styleMap = {
+      'player': 'border-blue-500 text-blue-600 bg-blue-50',
+      'metadata': 'border-green-500 text-green-600 bg-green-50',
+      'subtitles': 'border-purple-500 text-purple-600 bg-purple-50',
+      'timeline': 'border-orange-500 text-orange-600 bg-orange-50'
+    };
+    return styleMap[tabId as keyof typeof styleMap] || styleMap.player;
+  };
+
+  const getTabColorBar = (tabId: string) => {
+    const colorMap = {
+      'player': 'bg-blue-500',
+      'metadata': 'bg-green-500',
+      'subtitles': 'bg-purple-500',
+      'timeline': 'bg-orange-500'
+    };
+    return colorMap[tabId as keyof typeof colorMap] || colorMap.player;
+  };
+
   return (
     <div 
       className="relative bg-[#171717] border-l border-[#2d2d2d] flex text-[#ececf1] transition-all duration-200"
@@ -137,23 +157,28 @@ export default function RightPanel({ clip, isVisible, onClose }: RightPanelProps
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-[#2d2d2d] bg-[#1e1e1e]">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`
-                px-3 py-2 text-xs font-medium transition-colors flex items-center gap-1
-                ${activeTab === tab.id 
-                  ? 'text-white border-b-2 border-[#0e639c] bg-[#171717]' 
-                  : 'text-[#cccccc] hover:text-white hover:bg-[#2d2d2d]'
-                }
-              `}
-            >
-              <span className="text-sm">{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          ))}
+        <div className="bg-white border-b-2 border-gray-100 shadow-sm">
+          <nav className="flex space-x-1 px-4">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative py-3 px-4 font-medium text-xs transition-all duration-200 border-b-2 ${
+                  activeTab === tab.id 
+                    ? getTabActiveStyle(tab.id)
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </div>
+                {activeTab === tab.id && (
+                  <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${getTabColorBar(tab.id)}`}></div>
+                )}
+              </button>
+            ))}
+          </nav>
         </div>
 
         {/* Content */}
