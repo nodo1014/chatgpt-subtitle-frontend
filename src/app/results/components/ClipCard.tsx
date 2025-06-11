@@ -12,9 +12,13 @@ interface ClipCardProps {
 
 export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
   const [thumbnailError, setThumbnailError] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
   
   // 썸네일 경로가 없으면 기본 경로 생성
   const thumbnailPath = clip.thumbnailPath || `/thumbnails/${clip.id}.jpg`;
+  const videoPath = clip.clipPath;
   
   // 3단계 상태 확인
   const getStageInfo = (): StageInfo => {
@@ -43,17 +47,62 @@ export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
       onToast('클립보드 복사에 실패했습니다.');
     }
   };
+
+  const handleVideoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (videoPath && !videoError) {
+      // 새 창에서 비디오 재생
+      window.open(videoPath, '_blank');
+    }
+  };
   
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow">
-      {/* 썸네일 */}
-      <div className="relative aspect-video bg-gray-100">
-        {thumbnailPath && !thumbnailError ? (
+    <div 
+      className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-all duration-300 cursor-pointer group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* 비디오 미리보기 */}
+      <div 
+        className="relative aspect-video bg-gray-100 overflow-hidden"
+        onClick={handleVideoClick}
+      >
+        {videoPath && !videoError ? (
+          <>
+            <video
+              className="w-full h-full object-cover transition-all duration-500 ease-out group-hover:scale-105"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              onError={() => {
+                setVideoError(true);
+                setVideoLoading(false);
+              }}
+              onLoadStart={() => {
+                setVideoError(false);
+                setVideoLoading(true);
+              }}
+              onLoadedData={() => setVideoLoading(false)}
+              onCanPlay={() => setVideoLoading(false)}
+            >
+              <source src={videoPath} type="video/mp4" />
+            </video>
+            
+            {/* 비디오 로딩 중 오버레이 */}
+            {videoLoading && (
+              <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+              </div>
+            )}
+          </>
+        ) : thumbnailPath && !thumbnailError ? (
           <Image
             src={thumbnailPath}
             alt={clip.title}
             fill
-            className="object-cover brightness-110 contrast-105"
+            className="object-cover transition-all duration-500 ease-out group-hover:scale-105"
             unoptimized
             onError={() => setThumbnailError(true)}
             onLoad={() => setThumbnailError(false)}
@@ -64,25 +113,32 @@ export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
           </div>
         )}
         
+        {/* 재생 아이콘 오버레이 (hover시만 표시) */}
+        <div className={`absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="bg-white bg-opacity-90 rounded-full p-3 transform scale-75 group-hover:scale-100 transition-transform duration-300 shadow-lg">
+            <div className="text-gray-800 text-xl">▶️</div>
+          </div>
+        </div>
+        
         {/* 좌측 상단 - DB 제목 */}
-        <div className="absolute top-2 left-2">
-          <div className="bg-black bg-opacity-80 text-white px-2 py-1 rounded text-xs font-medium max-w-[120px] truncate">
+        <div className="absolute top-2 left-2 z-10">
+          <div className="bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-medium max-w-[120px] truncate backdrop-blur-sm">
             {clip.sourceFile.split('/').pop()?.replace(/\.(mp4|avi|mkv|mov)$/i, '')}
           </div>
         </div>
         
         {/* 우측 상단 - 3단계 상태 표시 */}
-        <div className="absolute top-2 right-2">
-          <div className={`${stageInfo.bgColor} ${stageInfo.color} px-2 py-1 rounded text-xs font-medium flex items-center gap-1`}>
+        <div className="absolute top-2 right-2 z-10">
+          <div className={`${stageInfo.bgColor} ${stageInfo.color} px-2 py-1 rounded text-xs font-medium flex items-center gap-1 backdrop-blur-sm bg-opacity-90`}>
             <span>{stageInfo.icon}</span>
             <span>{stageInfo.status}</span>
           </div>
         </div>
         
         {/* 중앙 - 영어 자막 (유튜브 썸네일 스타일) */}
-        <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div className="absolute inset-0 flex items-center justify-center p-4 z-10 pointer-events-none">
           <div className="text-white text-center">
-            <p className="text-sm md:text-base font-bold leading-tight" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.9), -2px -2px 4px rgba(0,0,0,0.9), 2px -2px 4px rgba(0,0,0,0.9), -2px 2px 4px rgba(0,0,0,0.9)'}}>
+            <p className="text-sm md:text-base font-bold leading-tight drop-shadow-lg" style={{textShadow: '2px 2px 4px rgba(0,0,0,0.8), -2px -2px 4px rgba(0,0,0,0.8), 2px -2px 4px rgba(0,0,0,0.8), -2px 2px 4px rgba(0,0,0,0.8)'}}>
               {clip.englishSubtitle}
             </p>
           </div>
