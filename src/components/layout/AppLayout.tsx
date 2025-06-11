@@ -39,14 +39,9 @@ export default function AppLayout({
   }, []);
 
   const loadSearchHistory = async () => {
-    // 기본 샘플 데이터 사용
-    const sampleHistory: HistoryItem[] = [
-      { title: '💕 사랑과 관계 표현', count: 15, timestamp: '2024-01-15' },
-      { title: '💼 비즈니스 미팅 영어', count: 12, timestamp: '2024-01-14' },
-      { title: '☕ 일상 대화 표현', count: 18, timestamp: '2024-01-13' },
-      { title: '🛍️ 쇼핑 영어', count: 13, timestamp: '2024-01-06' },
-    ];
-    setSearchHistory(sampleHistory);
+    // 동적 사이드바 시스템으로 전환되어 더 이상 하드코딩된 검색 히스토리는 사용하지 않습니다.
+    // 실제 검색 히스토리가 필요한 경우 API에서 로드할 수 있습니다.
+    setSearchHistory([]);
   };
 
   const toggleSidebar = () => {

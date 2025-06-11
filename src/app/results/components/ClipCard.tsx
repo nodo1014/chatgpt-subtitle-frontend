@@ -8,9 +8,10 @@ interface ClipCardProps {
   clip: ClipMetadata;
   onDelete: (clipId: string) => void;
   onToast: (message: string) => void;
+  onPlayVideo?: (clip: ClipMetadata) => void;
 }
 
-export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
+export default function ClipCard({ clip, onDelete, onToast, onPlayVideo }: ClipCardProps) {
   const [thumbnailError, setThumbnailError] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -50,9 +51,9 @@ export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
 
   const handleVideoClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (videoPath && !videoError) {
-      // 새 창에서 비디오 재생
-      window.open(videoPath, '_blank');
+    if (videoPath && !videoError && onPlayVideo) {
+      // 사이드 패널에서 비디오 재생
+      onPlayVideo(clip);
     }
   };
   
@@ -173,7 +174,7 @@ export default function ClipCard({ clip, onDelete, onToast }: ClipCardProps) {
         {/* 액션 버튼들 */}
         <div className="flex gap-2">
           <button 
-            onClick={() => isPlayable ? window.open(clip.clipPath, '_blank') : null}
+            onClick={() => isPlayable && onPlayVideo ? onPlayVideo(clip) : null}
             disabled={!isPlayable}
             className={`flex-1 px-3 py-2 rounded text-xs transition-colors flex items-center justify-center gap-1 ${
               isPlayable 

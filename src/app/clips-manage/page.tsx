@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import AppLayout from '@/components/layout/AppLayout';
 
 interface ClipData {
   id: string;
@@ -161,23 +162,20 @@ export default function ClipsManagePage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* 헤더 */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">🗄️ 클립 관리</h1>
-              <p className="mt-2 text-gray-600">클립 데이터베이스 관리 및 검색</p>
-            </div>
-            <Link 
-              href="/"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              ← 메인으로
-            </Link>
-          </div>
-        </div>
+    <AppLayout 
+      title="클립 관리"
+      subtitle="클립 데이터베이스 관리 및 검색"
+      icon="🗄️"
+      headerChildren={
+        <Link 
+          href="/"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          ← 메인으로
+        </Link>
+      }
+    >
+      <div className="space-y-6">
 
         {/* 마이그레이션 상태 */}
         {migrationStatus && (
@@ -393,6 +391,6 @@ export default function ClipsManagePage() {
           )}
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

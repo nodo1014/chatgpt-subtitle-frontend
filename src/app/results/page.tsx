@@ -3,10 +3,9 @@
 import { useResultsData, useClipOperations } from './hooks';
 import { showToastMessage } from './utils';
 import { SearchData } from './types';
+import AppLayout from '@/components/layout/AppLayout';
 
 // Components
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
 import TabNavigation from './components/TabNavigation';
 import AutoClipProgress from './components/AutoClipProgress';
 import SearchResults from './components/SearchResults';
@@ -54,10 +53,6 @@ export default function ResultsPage() {
   );
 
   // Event handlers
-  const handleToggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
-
   const handleNewSearch = () => {
     router.push('/');
   };
@@ -90,71 +85,71 @@ export default function ResultsPage() {
     );
   }
 
+  // Header content for AppLayout
+  const headerContent = (
+    <div className="flex items-center gap-4">
+      <button
+        onClick={handleClipsView}
+        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        <span>🎬</span>
+        <span>클립 보기</span>
+      </button>
+    </div>
+  );
+
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0f0f23] transition-all duration-300 relative">
-      {/* Sidebar */}
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        searchHistory={searchHistory}
-        onNewSearch={handleNewSearch}
+    <AppLayout 
+      title={viewMode === 'search' ? '검색 결과' : '클립 관리'} 
+      subtitle={searchData ? `"${searchData.sentence_results[0]?.search_sentence || ''}"에 대한 결과` : '클립 컬렉션'}
+      icon="🔍"
+      headerChildren={headerContent}
+    >
+      {/* Tab Navigation */}
+      <TabNavigation
+        viewMode={viewMode}
+        searchData={searchData}
+        clipsCount={clips.length}
+        onViewModeChange={handleViewModeChange}
       />
 
-      {/* Main Content - 나머지 전체 공간 활용 */}
-      <div className="flex-1 flex flex-col bg-white overflow-hidden transition-all duration-300">
-        {/* Header */}
-        <Header
-          viewMode={viewMode}
-          searchData={searchData}
-          onToggleSidebar={handleToggleSidebar}
-          onClipsView={handleClipsView}
-        />
+      {/* Auto Clip Progress */}
+      <AutoClipProgress progress={autoClipProgress} />
 
-        {/* Tab Navigation */}
-        <TabNavigation
-          viewMode={viewMode}
-          searchData={searchData}
-          clipsCount={clips.length}
-          onViewModeChange={handleViewModeChange}
-        />
-
-        {/* Auto Clip Progress */}
-        <AutoClipProgress progress={autoClipProgress} />
-
-        {/* Content Area - 컨테이너 전체 너비 활용 */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="w-full h-full px-6 py-6">
-            {viewMode === 'search' && searchData ? (
-              <SearchResults
-                searchData={searchData}
-                clippingStatus={clippingStatus}
-                onCreateClip={createClip}
-                onCreateAutoClips={handleCreateAutoClips}
-              />
-            ) : viewMode === 'clips' ? (
-              <ClipsView
-                clips={clips}
-                searchData={searchData}
-                onDeleteClip={deleteClip}
-                onToast={handleToast}
-                onViewModeChange={handleViewModeChange}
-                onNewSearch={handleNewSearch}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-6xl mb-4">🔍</div>
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">검색 결과를 찾을 수 없습니다</h3>
-                  <p className="text-gray-600 mb-6">새로운 검색을 시작해보세요.</p>
-                  <button 
-                    onClick={handleNewSearch}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
-                  >
-                    새 검색 시작
-                  </button>
-                </div>
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="w-full h-full px-6 py-6">
+          {viewMode === 'search' && searchData ? (
+            <SearchResults
+              searchData={searchData}
+              clippingStatus={clippingStatus}
+              onCreateClip={createClip}
+              onCreateAutoClips={handleCreateAutoClips}
+            />
+          ) : viewMode === 'clips' ? (
+            <ClipsView
+              clips={clips}
+              searchData={searchData}
+              onDeleteClip={deleteClip}
+              onToast={handleToast}
+              onViewModeChange={handleViewModeChange}
+              onNewSearch={handleNewSearch}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-6xl mb-4">🔍</div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">검색 결과를 찾을 수 없습니다</h3>
+                <p className="text-gray-600 mb-6">새로운 검색을 시작해보세요.</p>
+                <button 
+                  onClick={handleNewSearch}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                >
+                  새 검색 시작
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -164,6 +159,6 @@ export default function ResultsPage() {
         message={toastMessage}
         onClose={() => setShowToast(false)}
       />
-    </div>
+    </AppLayout>
   );
 }

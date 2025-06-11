@@ -34,6 +34,65 @@ export const useResultsData = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  // 카테고리별 필터링 검색 함수
+  const performCategorySearch = async (categoryId: number, text: string = '') => {
+    try {
+      setLoading(true);
+      console.log('🔍 카테고리별 검색 실행:', { categoryId, text });
+      
+      const response = await fetch('/api/content/filtered-search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          categoryId,
+          maxClips: 50,
+          sortBy: 'score'
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // 기존 SearchData 형식으로 변환
+        const searchData: SearchData = {
+          sentence_results: [{
+            sentence_index: 0,
+            search_sentence: text || `카테고리: ${data.metadata.categoryName}`,
+            found_count: data.results.length,
+            results: data.results.map((result: any) => ({
+              subtitle_text: result.subtitle_text,
+              media_file: result.media_file,
+              start_time: result.start_time,
+              end_time: result.end_time,
+              language: 'en',
+              directory: '',
+              confidence: result.score || 0
+            }))
+          }],
+          search_summary: {
+            total_sentences: 1,
+            total_results: data.results.length,
+            search_time: 0,
+            unique_files: new Set(data.results.map((r: any) => r.media_file)).size
+          }
+        };
+        
+        setSearchData(searchData);
+        setViewMode('search');
+        console.log('✅ 카테고리 검색 완료:', searchData);
+      } else {
+        console.error('카테고리 검색 실패:', data.error);
+      }
+    } catch (error) {
+      console.error('카테고리 검색 오류:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 초기화 effect
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
@@ -56,6 +115,19 @@ export const useResultsData = () => {
     
     if (viewParam === 'clips') {
       setViewMode('clips');
+    }
+
+    // URL에서 category 매개변수 확인
+    const categoryParam = searchParams.get('category');
+    const textParam = searchParams.get('text');
+    
+    if (categoryParam) {
+      const categoryId = parseInt(categoryParam);
+      if (!isNaN(categoryId)) {
+        console.log('🏷️ URL에서 카테고리 검색 실행:', categoryId);
+        performCategorySearch(categoryId, textParam || '');
+        return; // 카테고리 검색이면 일반 데이터 파싱 건너뛰기
+      }
     }
 
     const dataParam = searchParams.get('data');
@@ -133,6 +205,7 @@ export const useResultsData = () => {
     setToastMessage,
     // Functions
     loadClips,
+    performCategorySearch,
     router
   };
 };
