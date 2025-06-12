@@ -47,16 +47,73 @@ export class MetadataService {
     );
   }
 
+  // 데이터베이스에서 한글해설과 한글발음 정보 가져오기
+  static async getKoreanInfo(mediaFile: string, startTime: string, endTime: string): Promise<{
+    koreanExplanation?: string;
+    koreanPronunciation?: string;
+  }> {
+    try {
+      const dbPath = path.join(process.cwd(), 'public', 'working_subtitles.db');
+      const db = new Database(dbPath);
+      
+      // 미디어 파일명과 시간 범위로 자막 정보 검색
+      const query = `
+        SELECT korean_explanation, korean_pronunciation 
+        FROM subtitles 
+        WHERE media_file = ? 
+        AND start_time = ? 
+        AND end_time = ?
+        LIMIT 1
+      `;
+      
+      const result = db.prepare(query).get(mediaFile, startTime, endTime);
+      db.close();
+      
+      if (result) {
+        return {
+          koreanExplanation: result.korean_explanation || '',
+          koreanPronunciation: result.korean_pronunciation || ''
+        };
+      }
+      
+      return {
+        koreanExplanation: '',
+        koreanPronunciation: ''
+      };
+    } catch (error) {
+      console.error('❌ 한글 정보 조회 실패:', error);
+      return {
+        koreanExplanation: '',
+        koreanPronunciation: ''
+      };
+    }
+  }
+
   // 메타데이터 생성
-  static createMetadata(result: SearchResult, clipId: string): ClipMetadata {
+  static async createMetadata(result: SearchResult, clipId: string): Promise<ClipMetadata> {
     const title = extractTitle(result.media_file);
+    
+    // 데이터베이스에서 한글해설과 한글발음 정보 가져오기
+    const koreanInfo = await this.getKoreanInfo(result.media_file, result.start_time, result.end_time);
+    
+    // 한글 자막 생성 로직
+    let koreanSubtitle: string;
+    if (koreanInfo.koreanExplanation && koreanInfo.koreanExplanation.trim() !== '') {
+      // 한글 설명이 있는 경우 그대로 사용
+      koreanSubtitle = koreanInfo.koreanExplanation;
+    } else {
+      // 한글 설명이 없는 경우 기본 형태로 생성
+      koreanSubtitle = `한글 자막이 표시됩니다. ${result.subtitle_text}`;
+    }
     
     return {
       id: clipId,
       title,
       sentence: result.subtitle_text,
       englishSubtitle: result.subtitle_text,
-      koreanSubtitle: `한글 번역: ${result.sentence || ''}`,
+      koreanSubtitle: koreanSubtitle,
+      koreanExplanation: koreanInfo.koreanExplanation,
+      koreanPronunciation: koreanInfo.koreanPronunciation,
       startTime: result.start_time,
       endTime: result.end_time,
       sourceFile: result.media_file,
@@ -137,7 +194,7 @@ export class BatchProcessingService {
       
       // JSON 메타데이터 생성 및 저장
       const clipId = uuidv4();
-      const metadata = MetadataService.createMetadata(result, clipId);
+      const metadata = await MetadataService.createMetadata(result, clipId);
       
       if (await MetadataService.saveMetadata(metadata)) {
         jsonResults.push(metadata);

@@ -17,6 +17,7 @@ export default function ResultsPage() {
     // State
     searchData,
     loading,
+    clipsLoading,
     clippingStatus,
     setClippingStatus,
     clips,
@@ -73,8 +74,8 @@ export default function ResultsPage() {
     createAutoClipsInBackground(data);
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state - 검색 모드에서만 loading 체크, 클립 모드에서는 clipsLoading 체크
+  if (loading && viewMode === 'search') {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
@@ -134,6 +135,7 @@ export default function ResultsPage() {
               onToast={handleToast}
               onViewModeChange={handleViewModeChange}
               onNewSearch={handleNewSearch}
+              isLoading={clipsLoading}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">

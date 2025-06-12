@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       const analyzer = new MovieSubtitleAnalyzer();
 
       // 영화 자막 분석 실행
-      const results = await analyzer.analyzeMovieSubtitles(movie.series_name, parseInt(sampleSize.toString()));
+      const results = await analyzer.analyzeMovieSubtitles((movie as any).series_name, parseInt(sampleSize.toString()));
       
       // 상위 문장들을 학습 DB에 자동 추가
       const addedCount = await analyzer.addBestSentencesToLearning(results, 20);

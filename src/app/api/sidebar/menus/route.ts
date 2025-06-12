@@ -54,7 +54,7 @@ export async function GET() {
     const rootMenus: SidebarMenu[] = [];
     
     // 먼저 모든 메뉴를 맵에 저장
-    menus.forEach(menu => {
+    menus.forEach((menu: any) => {
       const processedMenu: SidebarMenu = {
         id: menu.id,
         name: menu.name,
@@ -82,7 +82,7 @@ export async function GET() {
     });
     
     // 계층 구조 구성
-    menus.forEach(menu => {
+    menus.forEach((menu: any) => {
       if (menu.parent_id) {
         const parent = menuMap.get(menu.parent_id);
         const child = menuMap.get(menu.id);

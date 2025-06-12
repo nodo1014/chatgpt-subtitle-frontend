@@ -300,7 +300,7 @@ export default function ClipPlayerPage() {
                       className="w-full h-full object-contain"
                       onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
                       onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-                      onEnded={() => {
+                      onEnded={(e) => {
                         if (autoNext && repeatMode !== 'one') {
                           handleNext();
                         } else if (repeatMode === 'one') {

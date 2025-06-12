@@ -158,7 +158,7 @@ Thank you so much"
         </div>
 
         {/* Features Preview */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl">
           <div className="text-center p-6 bg-gray-50 rounded-xl">
             <div className="text-3xl mb-3">🤖</div>
             <h3 className="font-semibold text-gray-800 mb-2">AI 테마 분류</h3>

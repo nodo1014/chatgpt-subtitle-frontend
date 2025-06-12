@@ -42,6 +42,7 @@ export default function ResultsPage() {
     createClip,
     deleteClip
   } = useClipOperations(
+    clippingStatus,
     setClippingStatus,
     setClips,
     setViewMode,

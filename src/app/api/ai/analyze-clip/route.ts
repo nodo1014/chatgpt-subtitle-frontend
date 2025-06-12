@@ -3,9 +3,9 @@ import Database from 'better-sqlite3';
 import OpenAI from 'openai';
 
 // OpenAI 클라이언트 초기화 (환경변수에서 API 키 로드)
-const openai = new OpenAI({
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
+}) : null;
 
 interface ClipAnalysisRequest {
   clipId: string;
@@ -126,6 +126,10 @@ Respond in JSON format.
   `;
 
   try {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [{ role: "user", content: analysisPrompt }],
@@ -329,7 +333,7 @@ export async function GET(request: NextRequest) {
 
     db.close();
 
-    const formattedResults = analysisResults.reduce((acc, row) => {
+    const formattedResults = analysisResults.reduce((acc, row: any) => {
       acc[row.analysis_type] = {
         data: JSON.parse(row.results),
         timestamp: row.created_at

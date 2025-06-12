@@ -185,9 +185,9 @@ export async function POST(request: NextRequest) {
     // 메타데이터 계산
     const totalClips = results.length;
     const averageScore = totalClips > 0 
-      ? results.reduce((sum: number, row: any) => sum + (row.score || 0), 0) / totalClips 
+      ? (results as any[]).reduce((sum: number, row: any) => sum + (row.score || 0), 0) / totalClips 
       : 0;
-    const estimatedDuration = results.reduce((sum: number, row: any) => sum + (row.duration || 0), 0);
+    const estimatedDuration = (results as any[]).reduce((sum: number, row: any) => sum + (row.duration || 0), 0);
 
     const response = {
       success: true,

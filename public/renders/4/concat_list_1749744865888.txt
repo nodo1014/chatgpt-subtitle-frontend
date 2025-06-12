@@ -1,0 +1,3 @@
+file '/home/kang/docker/youtube/indexer/indexer_v3/theme-search/public/renders/4/temp_repeat_0_1749744862826.mp4'
+file '/home/kang/docker/youtube/indexer/indexer_v3/theme-search/public/renders/4/temp_repeat_1_1749744864009.mp4'
+file '/home/kang/docker/youtube/indexer/indexer_v3/theme-search/public/renders/4/temp_repeat_2_1749744865248.mp4'

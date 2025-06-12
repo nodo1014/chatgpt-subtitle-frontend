@@ -28,7 +28,7 @@ export async function GET() {
     `).all();
     
     // JSON 필드 파싱
-    const parsedCategories = categories.map(cat => ({
+    const parsedCategories = categories.map((cat: any) => ({
       ...cat,
       filter_conditions: JSON.parse(cat.filter_conditions || '{}'),
       is_active: Boolean(cat.is_active)

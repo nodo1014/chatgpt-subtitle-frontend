@@ -12,6 +12,7 @@ interface ClipsViewProps {
   onToast: (message: string) => void;
   onViewModeChange: (mode: 'search' | 'clips') => void;
   onNewSearch: () => void;
+  isLoading?: boolean;
 }
 
 export default function ClipsView({ 
@@ -20,7 +21,8 @@ export default function ClipsView({
   onDeleteClip, 
   onToast, 
   onViewModeChange, 
-  onNewSearch 
+  onNewSearch,
+  isLoading = false
 }: ClipsViewProps) {
   const [selectedClip, setSelectedClip] = useState<ClipMetadata | null>(null);
 
@@ -31,6 +33,14 @@ export default function ClipsView({
   const handleClosePlayer = () => {
     setSelectedClip(null);
   };
+
+  const handleNextClip = (nextClip: ClipMetadata) => {
+    setSelectedClip(nextClip);
+  };
+
+  // 클립이 있으면 로딩 상태를 무시하고 클립을 표시
+  const shouldShowLoading = isLoading && clips.length === 0;
+
   return (
     <div className="w-full h-full flex bg-white">
       {/* 메인 클립 목록 영역 */}
@@ -42,7 +52,7 @@ export default function ClipsView({
             {/* 디버그 정보 추가 */}
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                <strong>디버그:</strong> clips 배열 길이: {clips.length}
+                <strong>디버그:</strong> clips 배열 길이: {clips.length}, isLoading: {isLoading.toString()}, shouldShowLoading: {shouldShowLoading.toString()}
                 {clips.length > 0 && (
                   <div>첫 번째 클립: {JSON.stringify(clips[0], null, 2)}</div>
                 )}
@@ -50,7 +60,12 @@ export default function ClipsView({
             )}
           </div>
           
-          {clips.length > 0 ? (
+          {shouldShowLoading ? (
+            <div className="text-center py-16">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">클립 목록을 불러오는 중...</p>
+            </div>
+          ) : clips.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
               {clips.map((clip) => (
                 <ClipCard 
@@ -92,6 +107,8 @@ export default function ClipsView({
         clip={selectedClip}
         isVisible={!!selectedClip}
         onClose={handleClosePlayer}
+        clips={clips}
+        onNextClip={handleNextClip}
       />
     </div>
   );

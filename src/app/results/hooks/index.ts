@@ -17,6 +17,7 @@ import { loadSearchHistory } from '../utils';
 export const useResultsData = () => {
   const [searchData, setSearchData] = useState<SearchData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [clipsLoading, setClipsLoading] = useState(false);
   const [clippingStatus, setClippingStatus] = useState<ClippingStatus>({});
   const [clips, setClips] = useState<ClipMetadata[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>('search');
@@ -144,14 +145,22 @@ export const useResultsData = () => {
     setLoading(false);
   }, [searchParams, router]);
 
+  // 클립 모드 초기 로딩
+  useEffect(() => {
+    if (viewMode === 'clips') {
+      // 클립 모드로 전환될 때 초기 로딩 (로딩 상태 표시)
+      loadClips(true);
+    }
+  }, [viewMode]);
+
   // 클립 목록 자동 새로고침
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
     
     if (viewMode === 'clips' || autoClipProgress.isCreating) {
-      // 2초마다 클립 목록 새로고침
+      // 2초마다 클립 목록 새로고침 (로딩 상태 표시 안함)
       intervalId = setInterval(() => {
-        loadClips();
+        loadClips(false);
       }, 2000);
     }
     
@@ -162,8 +171,12 @@ export const useResultsData = () => {
     };
   }, [viewMode, autoClipProgress.isCreating]);
 
-  const loadClips = async () => {
+  const loadClips = async (showLoading = true) => {
     try {
+      // 초기 로딩일 때만 로딩 상태 표시 (새로고침 시에는 표시하지 않음)
+      if (showLoading) {
+        setClipsLoading(true);
+      }
       if (process.env.NODE_ENV === 'development') {
         console.log('📋 클립 목록 로드 중...');
       }
@@ -180,6 +193,10 @@ export const useResultsData = () => {
       }
     } catch (error) {
       console.error('클립 목록 로드 오류:', error);
+    } finally {
+      if (showLoading) {
+        setClipsLoading(false);
+      }
     }
   };
 
@@ -188,6 +205,7 @@ export const useResultsData = () => {
     searchData,
     setSearchData,
     loading,
+    clipsLoading,
     clippingStatus,
     setClippingStatus,
     clips,
@@ -218,7 +236,7 @@ export const useClipOperations = (
   setAutoClipProgress: React.Dispatch<React.SetStateAction<AutoClipProgress>>,
   setToastMessage: React.Dispatch<React.SetStateAction<string>>,
   setShowToast: React.Dispatch<React.SetStateAction<boolean>>,
-  loadClips: () => Promise<void>
+  loadClips: (showLoading?: boolean) => Promise<void>
 ) => {
   // 백그라운드 클립 생성
   const createAutoClipsInBackground = async (data: SearchData) => {
@@ -240,7 +258,7 @@ export const useClipOperations = (
       if (process.env.NODE_ENV === 'development') {
         console.log('🔄 클립 목록 새로고침 (백그라운드)');
       }
-      await loadClips();
+      await loadClips(false); // 백그라운드 새로고침 시 로딩 상태 표시 안함
     }, 2000); // 2초마다 클립 목록 새로고침
     
     // 백그라운드에서 클립 생성 (UI 블로킹 없음)
@@ -269,7 +287,7 @@ export const useClipOperations = (
           });
           
           // 최종 클립 목록 로드
-          await loadClips();
+          await loadClips(false);
           
           // 성공 토스트
           setToastMessage(`🎉 ${result.total_created}개 클립이 생성되었습니다!`);

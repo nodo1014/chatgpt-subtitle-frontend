@@ -34,12 +34,12 @@ export async function GET() {
     `).all();
     
     // 각 시리즈의 클립 수 계산
-    const seriesWithStats = series.map(s => {
+    const seriesWithStats = series.map((s: any) => {
       const clipCount = db.prepare(`
         SELECT COUNT(*) as count 
         FROM series_clip_mappings 
         WHERE series_id = ?
-      `).get(s.id);
+      `).get(s.id) as any;
       
       return {
         ...s,

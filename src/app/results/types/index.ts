@@ -63,11 +63,3 @@ export type ViewMode = 'search' | 'clips';
 export interface ClippingStatus {
   [key: string]: boolean;
 }
-
-export interface StageInfo {
-  stage: number;
-  status: string;
-  icon: string;
-  color: string;
-  bgColor: string;
-}
